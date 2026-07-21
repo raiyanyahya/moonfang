@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Moonfang Castle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: #08060f;
+    color: #8a83a8;
+    font-family: monospace;
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  #frame {
+    position: relative;
+    line-height: 0;
+    border: 2px solid #241d3d;
+    box-shadow: 0 0 60px rgba(90, 50, 160, .25), 0 0 12px rgba(0,0,0,.8) inset;
+  }
+  canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #000;
+    display: block;
+  }
+  /* subtle scanlines */
+  #frame::after {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
+      rgba(0,0,0,.12) 2px, rgba(0,0,0,.12) 3px
+    );
+  }
+</style>
+</head>
+<body>
+  <div id="frame"><canvas id="screen" width="960" height="540"></canvas></div>
+  <script>
+    // fill the window at any size; pixelated rendering keeps it crisp
+    (function () {
+      const cv = document.getElementById('screen');
+      function fit() {
+        const s = Math.min((window.innerWidth - 8) / 960, (window.innerHeight - 40) / 540);
+        // snap to integers when within 6% of one (perfect pixels),
+        // otherwise scale smoothly so the game always fills the window
+        const near = Math.round(s);
+        const scale = Math.abs(s - near) < 0.06 && near >= 1 ? near : s;
+        cv.style.width = Math.round(960 * scale) + 'px';
+        cv.style.height = Math.round(540 * scale) + 'px';
+      }
+      window.addEventListener('resize', fit);
+      fit();
+    })();
+  </script>
+  <script src="js/config.js"></script>
+  <script src="js/font.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/level.js"></script>
+  <script src="js/systems.js"></script>
+  <script src="js/projectiles.js"></script>
+  <script src="js/pickups.js"></script>
+  <script src="js/enemies.js"></script>
+  <script src="js/bosses.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

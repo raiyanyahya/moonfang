@@ -1,0 +1,50 @@
+Art assets: "Gothicvania" series by Ansimuz (ansimuz.itch.io)
+Sources: opengameart.org/content/gothicvania-patreons-collection (CC0)
+         opengameart.org/content/gothicvania-cemetery-pack (CC0)
+         opengameart.org/content/gothicvania-church-pack (CC0)
+             -> church-props.png   (backgrounds.png: window / pillar / altar /
+                                    gargoyle / sconce wall panels, 192px tall)
+             -> church-tiles.png   (tileset.png)
+             -> church-column.png  (column.png)
+         opengameart.org/content/gothicvania-town (CC0)
+             -> town-props.png     (crates, barrel, wagon, lamp, lantern, well)
+             -> oldman-idle.png    (8 frames, 34x42)
+License: CC0 / Public Domain. Thank you Luis Zuno!
+
+--- Additional CC0 art (2026-07) ---
+
+Ansimuz (Luis Zuno) - CC0 / Public Domain, no attribution required:
+  opengameart.org/content/gothicvania-patreons-collection
+      -> ghost-shriek.png, ghost-vanish.png, hound-idle.png, hound-walk.png,
+         hound-jump.png, beast-burn.png, fx-fire-breath.png,
+         castle-tiles.png, castle-panels.png,
+         interior-tiles.png, bg-interior.png
+  opengameart.org/content/gothicvania-cemetery-pack
+      -> skeleton-robed-walk.png, skeleton-robed-rise.png, hell-cat-walk.png,
+         ghost-halo.png, fx-enemy-death.png, cemetery-tiles.png,
+         cemetery-props.png, bg-graveyard.png, bg-grave-mountains.png
+  opengameart.org/content/gotthicvania-swamp
+      -> spider-walk.png, bog-thing-walk.png, fx-soul-burst.png,
+         swamp-tiles.png, swamp-props.png, swamp-trees.png,
+         bg-swamp.png, bg-swamp-mid.png, bg-swamp-near.png
+  opengameart.org/content/gothicvania-magic-pack-9
+      -> fx-dark-bolt.png, fx-fire-bomb.png, fx-lightning.png, fx-spark.png
+  opengameart.org/content/cavern-tile-set
+      -> cave-tiles.png, cave-walls.png
+  opengameart.org/content/gothicvania-rocky-pass-environment
+      -> rocky-tiles.png, bg-rocky.png, prop-crystal.png
+  opengameart.org/content/horror-tile-set
+      -> grunge-tiles.png
+  opengameart.org/content/warped-caves-pixel-art-pack
+      -> prop-stalactite.png
+  opengameart.org/content/sideview-fantasy-patreon-collection
+      -> dragon-idle.png, dragon-breath.png, fx-slash-ring.png
+
+ettingrinder - CC0 / Public Domain:
+  opengameart.org/content/misc-dark-fantasy-scenery-sprites  -> gothic-props.png
+
+Stealthix - CC0 / Public Domain:
+  opengameart.org/content/horror-fantasy-assets  -> horror-props.png
+
+All of the above are CC0 / Public Domain. No attribution is required;
+these credits are given voluntarily.
