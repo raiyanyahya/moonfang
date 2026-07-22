@@ -157,6 +157,76 @@ const WEAPONS = {
     active: [6, 16], total: 24, sfxAt: 7,
     h: 30, crouchH: 18, color: '#ffb060', sfx: 'whip', craftOnly: true, burns: true,
   },
+  voidfang: {
+    name: 'VOIDFANG', short: 'VOID',
+    desc: 'FORGED ONLY. DRINKS THE FOE AND RETURNS THE WOUND',
+    len: [0, 19, 22, 26], dmg: [0, 3, 5, 7],
+    active: [5, 12], total: 18, sfxAt: 5,
+    h: 26, crouchH: 16, color: '#7a5ac0', sfx: 'whip', craftOnly: true, lifesteal: true, shadow: true,
+  },
+  sunsplitter: {
+    name: 'SUNSPLITTER', short: 'SUN',
+    desc: 'FORGED ONLY. HOLY FLAME PIERCES EVERY WARD',
+    len: [0, 24, 28, 33], dmg: [0, 4, 6, 9],
+    active: [7, 15], total: 24, sfxAt: 8,
+    h: 34, crouchH: 20, color: '#ffe888', sfx: 'whip', craftOnly: true, holy: true, burns: true,
+  },
+  twinfire: {
+    name: 'TWINFIRE BLADES', short: 'TWIN',
+    desc: 'TWO BURNING STEEL TONGUES. LASHES TWICE',
+    len: [0, 16, 18, 21], dmg: [0, 2, 3, 3],
+    active: [2, 8], total: 10, sfxAt: 3,
+    h: 24, crouchH: 15, color: '#ff8040', sfx: 'whip', burns: true, doubletap: true,
+  },
+  stormglaive: {
+    name: 'STORMCALLER GLAIVE', short: 'STORM',
+    desc: 'FORGED ONLY. LIGHTNING LEAPS FROM EVERY CUT',
+    len: [0, 24, 28, 33], dmg: [0, 3, 4, 6],
+    active: [8, 18], total: 27, sfxAt: 9,
+    h: 36, crouchH: 21, color: '#c08aff', sfx: 'whip', craftOnly: true, chain: true,
+  },
+  thornwhip: {
+    name: 'THORNHEART WHIP', short: 'THORN',
+    desc: 'FORGED ONLY. EACH LASH LEAVES VENOM AND DRINKS DEEP',
+    len: [0, 28, 32, 37], dmg: [0, 2, 3, 4],
+    active: [6, 14], total: 22, sfxAt: 7,
+    h: 28, crouchH: 16, color: '#7ad860', sfx: 'whip', craftOnly: true, venom: true, lifesteal: true,
+  },
+  hearthammer: {
+    name: 'HEARTHAMMER', short: 'HEART',
+    desc: 'FORGED ONLY. THE GROUND BURNS WHERE IT FALLS',
+    len: [0, 22, 25, 29], dmg: [0, 6, 9, 14],
+    active: [12, 22], total: 40, sfxAt: 13,
+    h: 44, crouchH: 25, color: '#ff6020', sfx: 'roar', craftOnly: true, quake: true, burns: true, pierce: 1,
+  },
+  frostbite: {
+    name: 'FROSTBITE DAGGER', short: 'FROST',
+    desc: 'A CRYSTAL BLADE. ENCASES WHAT IT TOUCHES',
+    len: [0, 14, 16, 18], dmg: [0, 2, 2, 3],
+    active: [2, 5], total: 8, sfxAt: 2,
+    h: 18, crouchH: 12, color: '#90f0ff', chills: true,
+  },
+  shadowscythe: {
+    name: 'SHADOW SCYTHE', short: 'SHADE',
+    desc: 'FORGED ONLY. THE BLADE PASSES THROUGH ONE BODY TO THE NEXT',
+    len: [0, 30, 35, 41], dmg: [0, 4, 5, 7],
+    active: [7, 16], total: 26, sfxAt: 8,
+    h: 36, crouchH: 21, color: '#5040a0', craftOnly: true, travel: true, shadow: true, pierce: 2,
+  },
+  bloodletter: {
+    name: 'BLOOD LETTER', short: 'BLOOD',
+    desc: 'FORGED ONLY. WOUNDS YOURSELF TO WOUND THEM TWICE OVER',
+    len: [0, 20, 23, 27], dmg: [0, 8, 11, 16],
+    active: [8, 16], total: 28, sfxAt: 9,
+    h: 32, crouchH: 19, color: '#d02030', sfx: 'roar', craftOnly: true, bloodprice: 2,
+  },
+  lunarblade: {
+    name: 'LUNARBLADE', short: 'LUNA',
+    desc: 'FORGED ONLY. THE MOON ITSELF, BENT INTO A SINGLE EDGE',
+    len: [0, 28, 33, 39], dmg: [0, 5, 7, 10],
+    active: [7, 16], total: 22, sfxAt: 8,
+    h: 34, crouchH: 20, color: '#d8e8ff', craftOnly: true, holy: true, chills: true, burns: true,
+  },
 };
 const WEAPON_KEYS = Object.keys(WEAPONS);
 
@@ -407,14 +477,78 @@ const SUBWEAPONS = {
       }
     },
   },
-
+  voidshard: {
+    name: 'VOID SHARD', desc: 'UP+Z. PHASES THROUGH EVERYTHING. 3 HEARTS', cost: 3,
+    icon: () => Sprites.voidShard,
+    fire(p) {
+      game.projectiles.push(new VoidShardProj(
+        p.facing > 0 ? p.x + p.w - 2 : p.x - 12, p.y + 8, p.facing));
+    },
+    crash(p, cx, cy) {
+      for (let i = 0; i < 6; i++) {
+        const v = new VoidShardProj(cx - 8, cy - 16 + i * 8, i % 2 ? 1 : -1);
+        v.dmg = 5; v.pierce = 99;
+        game.projectiles.push(v);
+      }
+    },
+  },
+  lightningorb: {
+    name: 'LIGHTNING ORB', desc: 'UP+Z. CHAINS BETWEEN FOES. 3 HEARTS', cost: 3,
+    icon: () => Sprites.lightningOrb,
+    fire(p) {
+      game.projectiles.push(new LightningOrbProj(
+        p.facing > 0 ? p.x + p.w : p.x - 12, p.y + 6, p.facing));
+    },
+    crash(p, cx, cy) {
+      for (let i = 0; i < 8; i++) {
+        const orb = new LightningOrbProj(cx - 6, cy - 12 + i * 5, i % 2 ? 1 : -1);
+        orb.vy = (i - 4) * 0.6;
+        game.projectiles.push(orb);
+      }
+      game.addShake(3);
+    },
+  },
+  crystalshard: {
+    name: 'CRYSTAL SHARD', desc: 'UP+Z. SPLITS ON IMPACT. 2 HEARTS', cost: 2,
+    icon: () => Sprites.crystalShard,
+    fire(p) {
+      game.projectiles.push(new CrystalShardProj(
+        p.facing > 0 ? p.x + p.w - 2 : p.x - 8, p.y + 7, p.facing));
+    },
+    crash(p, cx, cy) {
+      for (let i = 0; i < 12; i++) {
+        const cs = new CrystalShardProj(cx - 4, cy - 4, 1);
+        cs.vx = Math.cos(i * Math.PI / 6) * 4;
+        cs.vy = Math.sin(i * Math.PI / 6) * 4;
+        game.projectiles.push(cs);
+      }
+    },
+  },
+  darkflame: {
+    name: 'DARKFLAME VIAL', desc: 'UP+Z. LOBBED. LEAVES VOID FIRE. 3 HEARTS', cost: 3,
+    icon: () => Sprites.darkflame,
+    fire(p) {
+      const b = new BombProj(p.facing > 0 ? p.x + p.w : p.x - 8, p.y + 4, p.facing);
+      b.vy = -3.8; b.fuse = 50; b.darkflame = true;
+      game.projectiles.push(b);
+    },
+    crash(p, cx, cy) {
+      const ty = Math.floor((p.y + p.h + 4) / TILE);
+      for (let i = -4; i <= 4; i++) {
+        const pool = new DarkFirePool(cx + i * 18, ty * TILE);
+        pool.life = 200;
+        game.projectiles.push(pool);
+      }
+      game.addShake(4);
+    },
+  },
 };
 const SUB_KEYS = Object.keys(SUBWEAPONS);
 
 // ---------------------------------------------------------------- relics
 // Generated equipment: base x prefix x suffix x tier = thousands of distinct
 // relics. Stats stack across the hunter's three slots.
-const RELIC_BASES = ['AMULET', 'RING', 'SIGIL', 'IDOL', 'FANG', 'TALISMAN', 'EYE', 'CROWN', 'VIAL', 'BELL'];
+const RELIC_BASES = ['AMULET', 'RING', 'SIGIL', 'IDOL', 'FANG', 'TALISMAN', 'EYE', 'CROWN', 'VIAL', 'BELL', 'PHYLACTERY', 'RELIQUARY'];
 const RELIC_PREFIX = [
   { name: 'BONE', stat: { maxHp: 2 } },
   { name: 'IRON', stat: { armor: 1 } },
@@ -426,6 +560,10 @@ const RELIC_PREFIX = [
   { name: 'CURSED', stat: { dmg: 2, maxHp: -2 } },
   { name: 'BLESSED', stat: { maxHp: 3 } },
   { name: 'MOONLIT', stat: { charge: 1 } },
+  { name: 'SHADOWED', stat: { dmg: 1, vamp: 1 } },
+  { name: 'RADIANT', stat: { maxHp: 1, dmg: 1 } },
+  { name: 'DRAGON', stat: { burn: 2, dmg: 1 } },
+  { name: 'VOID', stat: { vamp: 1, charge: 1 } },
 ];
 const RELIC_SUFFIX = [
   { name: 'OF VIGOR', stat: { maxHp: 3 } },
@@ -438,6 +576,10 @@ const RELIC_SUFFIX = [
   { name: 'OF FROST', stat: { chill: 1 } },
   { name: 'OF FORTUNE', stat: { luck: 1 } },
   { name: 'OF THE MOON', stat: { charge: 1, dmg: 1 } },
+  { name: 'OF THE VOID', stat: { dmg: 1, vamp: 1 } },
+  { name: 'OF DAWN', stat: { maxHp: 1, dmg: 1, armor: 1 } },
+  { name: 'OF DRAGONFIRE', stat: { burn: 2 } },
+  { name: 'OF ECLIPSE', stat: { dmg: 2, maxHp: -1 } },
 ];
 const RELIC_STAT_LABEL = {
   maxHp: 'HP', dmg: 'BLADE', armor: 'ARMOR', speed: 'HASTE', jump: 'LEAP',
@@ -586,9 +728,21 @@ const ZONES = [
   { key: 'observatory', name: 'THE OBSERVATORY', biome: 'gallery', row: 16, w: 120,
     pool: ['gallery', 'moonbridge', 'ascent', 'hall'], danger: 7, tint: '#a0b0e0',
     gate: 'ember', branch: 'up' },
+  { key: 'stormspires', name: 'THE STORM SPIRES', biome: 'sky', row: 10, w: 140,
+    pool: ['skybridge', 'skyisland', 'battlements', 'skybridge'], danger: 7, tint: '#8ac8f0',
+    gate: 'wings', branch: 'up' },
   { key: 'abyss', name: 'THE HUNGRY DARK', biome: 'catacombs', row: 80, w: 130,
     pool: ['pits', 'warren', 'cistern', 'pits'], danger: 7, tint: '#4a5a6a',
     gate: 'tide', branch: 'down' },
+  { key: 'voidgate', name: 'THE VOID GATE', biome: 'void', row: 90, w: 130,
+    pool: ['voidhall', 'voidhall', 'pits', 'warren'], danger: 8, tint: '#3a3050',
+    gate: 'mist', branch: 'down' },
+  { key: 'dragonroost', name: 'THE DRAGON ROOST', biome: 'foundry', row: 14, w: 140,
+    pool: ['foundry', 'ascent', 'battlements', 'ascent'], danger: 8, tint: '#e08040',
+    gate: 'ember', boss: 'DragonGuardian', bossName: 'VAELTHRAN THE EVERBURNING', reward: 'dragonfire', branch: 'up' },
+  { key: 'sunken', name: 'THE SUNKEN DEPTHS', biome: 'void', row: 96, w: 140,
+    pool: ['cistern', 'voidhall', 'cistern', 'pits'], danger: 8, tint: '#1a4060',
+    gate: 'dragonfire', branch: 'down' },
   { key: 'heart', name: 'THE LUNAR HEART', biome: 'lunar', row: 28, w: 130,
     pool: ['moonbridge', 'moonbridge', 'hall', 'ascent'], danger: 8, tint: '#8ad0f0',
     gate: 'mist', boss: 'FinalBoss', bossName: 'THE MOONFANG', reward: null },
@@ -625,6 +779,11 @@ const BOSS_REWARDS = {
     name: 'THE PALE MIST', from: 'THE PALE TWIN',
     desc: 'HOLD DOWN AND LEAP TO STEP THROUGH THIN STONE',
     apply: p => { p.skills.mist = true; p.skills.phase = true; },
+  },
+  dragonfire: {
+    name: 'DRAGONFIRE HEART', from: 'VAELTHRAN',
+    desc: 'THE EVERBURNING FIRE IS YOURS. PLUNGES LEAVE FIRE AND WAVES BURN BRIGHTER',
+    apply: p => { p.skills.dragonfire = true; p.skills.pyre = true; p.subWeapon = p.subWeapon || 'darkflame'; },
   },
 };
 
@@ -733,19 +892,19 @@ const CARD_NAME = {
   salamander: 'SALAMANDER', serpent: 'SERPENT', golem: 'GOLEM',
   tempest: 'TEMPEST', luna: 'LUNA', manticore: 'MANTICORE',
   cockatrice: 'COCKATRICE', griffin: 'GRIFFIN', unicorn: 'UNICORN', blackdog: 'BLACK DOG',
-  basilisk: 'BASILISK', phoenix: 'PHOENIX',
+  basilisk: 'BASILISK', phoenix: 'PHOENIX', nebula: 'NEBULA',
 };
 const CARD_LETTER = {
   mercury: 'M', mars: 'X', jupiter: 'J', saturn: 'S',
   salamander: 'F', serpent: 'I', golem: 'G', tempest: 'T', luna: 'L',
   manticore: 'V', cockatrice: 'P', griffin: 'W', unicorn: 'H', blackdog: 'B',
-  basilisk: 'K', phoenix: 'X',
+  basilisk: 'K', phoenix: 'X', nebula: 'V',
 };
 
 const CARD_ACTIONS = ['mercury', 'mars', 'jupiter', 'saturn'];
 const CARD_ATTRS = ['salamander', 'serpent', 'golem', 'tempest', 'luna',
   'manticore', 'cockatrice', 'griffin', 'unicorn', 'blackdog',
-  'basilisk', 'phoenix'];
+  'basilisk', 'phoenix', 'nebula'];
 
 // Every pairing is a real effect. `fx` is read by the game through
 // player.cardFx(key), so a new combo needs no new code path.
@@ -807,6 +966,14 @@ const CARD_COMBOS = {
   'jupiter+phoenix': ['PHOENIX FLIGHT', 'YOUR THROWN ARM RETURNS ALIGHT', { subBurn: 2, subReturn: 1 }],
   'saturn+basilisk': ['BASILISK COIL', 'A STONE SERPENT COILS AT YOUR HEEL', { familiar: 'basilisk' }],
   'saturn+phoenix': ['PHOENIX ROOST', 'A BURNING BIRD KEEPS PACE WITH YOU', { familiar: 'phoenix', aura: 'burn' }],
+
+  // NEBULA — the card from the void: dark power at any price
+  'mercury+nebula': ['VOID EDGE', 'BLADE +3, BUT EACH BLOW COSTS A HALF-HEART', { dmg: 3, voidToll: true }],
+  'mars+nebula': ['VOID MAIL', 'WOUNDS TAKEN HEAL YOU, THEN BURN YOU LATER', { voidMail: true }],
+  'jupiter+nebula': ['VOID WARD', 'A SPHERE OF NOTHING ERASES WHAT ENTERS', { voidAura: true }],
+  'saturn+nebula': ['VOID RITE', 'BLADE +5. YOUR HEALTH SHRINKS BY THE MINUTE', { dmg: 5, voidRite: true }],
+  'nebula+basilisk': ['VOID BASILISK', 'TWO SERPENTS OF NOTHING CIRCLE YOU', { familiar: 'voidbasilisk' }],
+  'nebula+phoenix': ['DARK PHOENIX', 'YOU RISE TWICE, BUT THE SECOND TIME LEAVES A SCAR', { dmg: 3, darkRebirth: true }],
 };
 const cardIconCache = {};
 function cardIcon(key) {
@@ -880,6 +1047,17 @@ const SKILLS = [
   { key: 'scavenger', name: 'SCAVENGER', desc: 'BROKEN CANDLES GIVE UP MORE', cost: 14 },
   { key: 'cartographer', name: 'CARTOGRAPHER', desc: 'THE CHART REMEMBERS FARTHER THAN YOU SEE', cost: 12 },
   { key: 'secondwind', name: 'SECOND WIND', desc: 'ONCE A SCENE, A KILL MENDS ONE WOUND', cost: 22 },
+  // --- the third book: dragonfire, void, and the deep
+  { key: 'dragonfire', name: 'DRAGONFIRE HEART', desc: 'EVERBURNING. FIRE CANNOT TOUCH YOU', cost: 0 },
+  { key: 'pyre', name: 'FUNERAL PYRE', desc: 'PLUNGES LEAVE FIRE WHERE THEY LAND', cost: 18, req: 'dragonfire' },
+  { key: 'meteor', name: 'METEOR STRIKE', desc: 'PLUNGES FROM HIGH ABOVE SHATTER THE WHOLE ROOM', cost: 26, req: 'pyre' },
+  { key: 'shadowmeld', name: 'SHADOW MELD', desc: 'AFTER EVERY KILL: BRIEF AND TERRIBLE UNSEEN', cost: 20, req: 'dash' },
+  { key: 'combustion', name: 'COMBUSTION', desc: 'THE SLAIN BURST, AND THE LIVING BURN', cost: 22, req: 'shadowmeld' },
+  { key: 'soulharvest', name: 'SOUL HARVEST', desc: 'EVERY SOUL GIVES TWO MORE HEALTH', cost: 20, req: 'vamp' },
+  { key: 'twinfang', name: 'TWIN FANG', desc: 'THE VAMPIRIC EDGE MENDS EVERY SECOND KILL', cost: 26, req: 'soulharvest' },
+  { key: 'voidbless', name: 'VOID BLESSING', desc: 'THE DARK DOES NOT HUNGER FOR YOUR HEARTS', cost: 22, req: 'shadowmeld' },
+  { key: 'starlight', name: 'STARLIGHT PATH', desc: 'ON SKY BRIDGES, YOU FALL HALF AS FAST', cost: 18, req: 'featherfall' },
+  { key: 'deepbreath', name: 'DEEP BREATH', desc: 'THE BLACK WATER CANNOT DROWN YOU', cost: 20, req: 'swim' },
 ];
 
 
@@ -912,6 +1090,13 @@ const BESTIARY_SPECIES = [
   { key: 'NightmareBoss', name: 'TENEBRAE', sheet: 'nightmareIdle', lore: 'THE NIGHT GIVEN HOOVES' },
   { key: 'HellBeastBoss', name: 'MOLOCH', sheet: 'beastIdle', lore: 'HUNGER THAT LEARNED TO WALK' },
   { key: 'Gargoyle', name: 'GARGOYLE', sheet: null, lore: 'STONE THAT WAITS FOR YOU TO PASS BENEATH' },
+  { key: 'RobedZombie', name: 'ACOLYTE BONE', sheet: 'skelRobedWalk', lore: 'IT WRITES PRAYERS IN THE DUST' },
+  { key: 'HellCat', name: 'HELL CAT', sheet: 'hellCatWalk', lore: 'IT WATCHED YOU BEFORE YOU SAW IT' },
+  { key: 'BogThing', name: 'BOG WRETCH', sheet: 'bogWalk', lore: 'THE SWAMP WORE IT LIKE A SHROUD' },
+  { key: 'Wraith', name: 'SHRIEKING WRAITH', sheet: 'ghostShriek', lore: 'IT SCREAMS ONLY ONCE. YOU WILL HEAR IT' },
+  { key: 'PlagueRat', name: 'PLAGUE RAT', sheet: null, lore: 'THEY CAME WITH THE FLOOD AND NEVER LEFT' },
+  { key: 'CaveCrawler', name: 'CAVE CRAWLER', sheet: null, lore: 'THE WALLS THEMSELVES HAVE TEETH' },
+  { key: 'DragonGuardian', name: 'VAELTHRAN', sheet: 'dragonIdle', lore: 'A DRAGON OLDER THAN THE CASTLE' },
 ];
 
 // ---------------------------------------------------------------- sub-weapon infusions
@@ -1020,6 +1205,15 @@ const FEATS = {
   legendary: { name: 'MYTH KEEPER', desc: 'HOLD A LEGENDARY RELIC' },
   firstcrash: { name: 'WRATH UNLEASHED', desc: 'PERFORM AN ITEM CRASH' },
   survivor: { name: 'DEATHLESS', desc: 'SURVIVE BY SECOND WIND' },
+  dragonbane: { name: 'DRAGONBANE', desc: 'SLAY THE EVERBURNING' },
+  voidtouched: { name: 'VOID TOUCHED', desc: 'BIND A NEBULA CARD' },
+  skydancer: { name: 'SKY DANCER', desc: 'REACH THE STORM SPIRES' },
+  deepdelver: { name: 'DEEP DELVER', desc: 'REACH THE SUNKEN DEPTHS' },
+  soulthief: { name: 'SOUL THIEF', desc: 'CARRY ALL FOUR SOULS AT ONCE' },
+  armory5: { name: 'WALKING ARMORY', desc: 'CARRY FIVE WEAPONS AT ONCE' },
+  masterblade: { name: 'MASTER BLADE', desc: 'REACH PEERLESS MASTERY WITH ANY WEAPON' },
+  allcraft: { name: 'MASTER CRAFTER', desc: 'FORGE 50 ITEMS IN ALL' },
+  trueending: { name: 'TRUE ENDING', desc: 'FELL THE MOONFANG WITH ALL GIFTS' },
 };
 
 // ---------------------------------------------------------------- lore tablets
@@ -1049,6 +1243,9 @@ const MATERIALS = {
   frostglass:{ name: 'FROSTGLASS', short: 'FRST', color: '#a8e8ff', depth: 6 },
   emberlode: { name: 'EMBERLODE',  short: 'EMBR', color: '#ff9040', depth: 6 },
   mirrorshard:{name: 'MIRRORSHARD',short: 'MIRR', color: '#d0c8f0', depth: 7 },
+  voidstone: { name: 'VOIDSTONE',  short: 'VOID', color: '#4a3880', depth: 8 },
+  dragonbone:{ name: 'DRAGONBONE', short: 'DRGN', color: '#e0c080', depth: 8 },
+  stariron:  { name: 'STAR IRON',  short: 'STAR', color: '#c8e0ff', depth: 7 },
 };
 const MATERIAL_KEYS = Object.keys(MATERIALS);
 
@@ -1169,6 +1366,44 @@ const RECIPES = [
     cost: { bloodiron: 4, boneash: 3 }, essence: 12, kind: 'ore', mat: 'emberlode', amount: 2 },
   { key: 'o_mirror', cat: 'ORE', name: 'SILVER THE GLASS', desc: 'MAKE MIRRORSHARD',
     cost: { frostglass: 2, moonsilver: 4 }, essence: 18, kind: 'ore', mat: 'mirrorshard', amount: 2 },
+
+  // ---- the third forge: void-forged arms and dragon-wrought steel
+  { key: 'w_voidfang', cat: 'ARMS', name: 'VOIDFANG', desc: 'FORGED ONLY. DRINKS THE FOE',
+    cost: { voidstone: 4, obsidian: 3 }, essence: 22, kind: 'weapon', weapon: 'voidfang' },
+  { key: 'w_sunsplitter', cat: 'ARMS', name: 'SUNSPLITTER', desc: 'FORGED ONLY. HOLY FLAME',
+    cost: { moonsilver: 5, emberlode: 3, gravesalt: 2 }, essence: 24, kind: 'weapon', weapon: 'sunsplitter' },
+  { key: 'w_twinfire', cat: 'ARMS', name: 'TWINFIRE BLADES', desc: 'TWO BURNING STEEL TONGUES',
+    cost: { emberlode: 3, bloodiron: 2 }, essence: 15, kind: 'weapon', weapon: 'twinfire' },
+  { key: 'w_stormglaive', cat: 'ARMS', name: 'STORMCALLER GLAIVE', desc: 'FORGED ONLY. LIGHTNING LEAPS',
+    cost: { voidstone: 3, moonsilver: 4, stariron: 2 }, essence: 26, kind: 'weapon', weapon: 'stormglaive' },
+  { key: 'w_thornwhip', cat: 'ARMS', name: 'THORNHEART WHIP', desc: 'FORGED ONLY. VENOM AND LIFE',
+    cost: { gravesalt: 4, boneash: 4, obsidian: 2 }, essence: 20, kind: 'weapon', weapon: 'thornwhip' },
+  { key: 'w_hearthammer', cat: 'ARMS', name: 'HEARTHAMMER', desc: 'FORGED ONLY. THE GROUND BURNS',
+    cost: { emberlode: 5, bloodiron: 4, dragonbone: 2 }, essence: 28, kind: 'weapon', weapon: 'hearthammer' },
+  { key: 'w_frostbite', cat: 'ARMS', name: 'FROSTBITE DAGGER', desc: 'A CRYSTAL BLADE',
+    cost: { frostglass: 4, moonsilver: 2 }, essence: 14, kind: 'weapon', weapon: 'frostbite' },
+  { key: 'w_shadowscythe', cat: 'ARMS', name: 'SHADOW SCYTHE', desc: 'FORGED ONLY. PASSES THROUGH',
+    cost: { voidstone: 4, obsidian: 3, boneash: 3 }, essence: 24, kind: 'weapon', weapon: 'shadowscythe' },
+  { key: 'w_bloodletter', cat: 'ARMS', name: 'BLOOD LETTER', desc: 'FORGED ONLY. WOUNDS TWICE',
+    cost: { bloodiron: 5, voidstone: 2, gravesalt: 3 }, essence: 30, kind: 'weapon', weapon: 'bloodletter' },
+  { key: 'w_lunarblade', cat: 'ARMS', name: 'LUNARBLADE', desc: 'FORGED ONLY. THE MOON AS STEEL',
+    cost: { moonsilver: 6, mirrorshard: 3, stariron: 2 }, essence: 32, kind: 'weapon', weapon: 'lunarblade' },
+  { key: 'o_void', cat: 'ORE', name: 'TOUCH THE VOID', desc: 'MAKE VOIDSTONE FROM OBSIDIAN',
+    cost: { obsidian: 5, mirrorshard: 1 }, essence: 16, kind: 'ore', mat: 'voidstone', amount: 2 },
+  { key: 'o_dragon', cat: 'ORE', name: 'KINDLED BONE', desc: 'MAKE DRAGONBONE FROM EMBERLODE',
+    cost: { emberlode: 4, bloodiron: 2 }, essence: 18, kind: 'ore', mat: 'dragonbone', amount: 1 },
+  { key: 'o_star', cat: 'ORE', name: 'CATCH A STAR', desc: 'MAKE STAR IRON FROM MOONSILVER',
+    cost: { moonsilver: 5, frostglass: 2 }, essence: 18, kind: 'ore', mat: 'stariron', amount: 2 },
+  { key: 'c_dragon', cat: 'CHARMS', name: 'DRAGON CHARM', desc: 'A RELIC WITH DRAGONFIRE',
+    cost: { dragonbone: 2, emberlode: 3 }, essence: 28, kind: 'relic', bias: 3.4 },
+  { key: 'c_void', cat: 'CHARMS', name: 'VOID CHARM', desc: 'A RELIC FROM THE DARK BETWEEN',
+    cost: { voidstone: 3, obsidian: 3 }, essence: 30, kind: 'relic', bias: 3.6 },
+  { key: 'r_voidward', cat: 'RITES', name: 'RITE OF THE VOID', desc: 'ALL ENEMIES SLOWED FOR A SCENE',
+    cost: { voidstone: 2, gravesalt: 3 }, essence: 20, kind: 'voidrite' },
+  { key: 'r_pyre', cat: 'RITES', name: 'RITE OF THE FUNERAL PYRE', desc: 'MASSIVE FIRE DAMAGE TO ALL NEARBY',
+    cost: { dragonbone: 1, emberlode: 3 }, essence: 24, kind: 'pyre' },
+  { key: 'r_soulbind', cat: 'RITES', name: 'RITE OF SOUL BINDING', desc: 'MAX HEALTH +8, AND HEARTS +10',
+    cost: { voidstone: 1, moonsilver: 4, gravesalt: 4 }, essence: 28, kind: 'soulbind' },
 ];
 
 // Every thrown arm can be cast to order — the forge is where you build a loadout.
@@ -1180,6 +1415,8 @@ const SUB_COST = {
   chakram: { moonsilver: 3, obsidian: 2 }, shuriken: { boneash: 3, moonsilver: 1 },
   harpoon: { bloodiron: 3, boneash: 2 }, bolas: { boneash: 3, obsidian: 1 },
   flare: { emberlode: 2, gravesalt: 1 }, fang: { boneash: 2, moonsilver: 2 },
+  voidshard: { voidstone: 3, obsidian: 1 }, lightningorb: { stariron: 2, moonsilver: 2 },
+  crystalshard: { frostglass: 3, moonsilver: 1 }, darkflame: { voidstone: 2, emberlode: 2 },
 };
 for (const sk of Object.keys(SUBWEAPONS)) {
   RECIPES.push({

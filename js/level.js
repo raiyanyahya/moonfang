@@ -126,6 +126,12 @@ function resetWorld() {
   Level.zones = [];
   Level.throwers = [];
   Level.spiders = [];
+  Level.robedZombies = [];
+  Level.hellCats = [];
+  Level.bogThings = [];
+  Level.wraiths = [];
+  Level.plagueRats = [];
+  Level.caveCrawlers = [];
   Level.pendulums = [];
   Level.hollows = [];   // shafts that later passes must not fill or floor
   Level.skyIslands = [];
@@ -837,6 +843,122 @@ function buildZoneInto(zone, startX) {
     x += w + 1;
   }
 
+  // SKY BRIDGE: shattered walkways between floating islands. Gaps, wind, and
+  // treasure hanging off the edges at heights no one could normally reach.
+  function segSkybridge(len) {
+    const ceiling = Math.max(4, G - 5);
+    let cx = x + 2;
+    rectFill(x, G, x + 2, G + 1, 1);
+    noteGround(x, x + 2, G);
+    while (cx < x + len - 3) {
+      const span = ri(3, 6);
+      if (rnd() < 0.6) {
+        platform(cx, G, span);
+        if (rnd() < 0.4) Level.bats.push({ x: (cx + (span >> 1)) * TILE, y: (G - 5) * TILE });
+      } else {
+        for (let i = 0; i < span; i++) {
+          platform(cx + i, G, 1);
+          if (rnd() < 0.4) tset(cx + i, G, 1);
+        }
+      }
+      if (rnd() < 0.3) {
+        const tx = cx + (span >> 1);
+        Level.treasures.push({ x: tx * TILE, y: (G - 2) * TILE, kind: rnd() < 0.5 ? 'gem' : 'heart' });
+      }
+      cx += span;
+      const ledgeW = ri(3, 6);
+      rectFill(cx, G, cx + ledgeW, G + 1, 1);
+      noteGround(cx, cx + ledgeW, G);
+      if (rnd() < 0.5) addCandle(cx + 1, G, rnd() < 0.3 ? takeDrop() : null);
+      if (rnd() < 0.4 && cx > x + 8) {
+        platform(cx + 1, G - rc([5, 6, 7]), ri(3, 5));
+        if (rnd() < 0.4) Level.treasures.push({
+          x: (cx + 2) * TILE + 4, y: (G - 8) * TILE,
+          kind: rnd() < 0.4 ? 'relic' : 'chest',
+          data: null,
+        });
+      }
+      cx += ledgeW;
+    }
+    rectFill(x + len - 2, G, x + len, G + 1, 1);
+    noteGround(x + len - 2, x + len, G);
+    Level.bats.push({ x: (x + (len >> 1)) * TILE, y: (G - 10) * TILE });
+    x += len + 1;
+  }
+
+  // SKY ISLAND: a lone floating isle, reachable by the wings or phantom steps.
+  // The island holds treasure and candles, but no easy way on or off.
+  function segSkyisland(len) {
+    const w = ri(8, Math.min(len - 4, 14));
+    const startX = x + (len - w) / 2;
+    // the approach: two narrow pillars of stone holding a suspended deck far above the ground
+    rectFill(x + 2, G, x + 4, G + 1, 1);
+    noteGround(x + 2, x + 4, G);
+    const gap = (len - w) / 2;
+    // the island itself, suspended above a fathomless drop
+    const isleY = Math.max(2, G - rc([6, 7, 8, 9]));
+    rectFill(startX, isleY + 2, startX + w, isleY + 1, 1);
+    rectFill(startX + 1, isleY + 1, startX + w - 1, isleY, 1);
+    noteGround(startX, startX + w, isleY + 2);
+    platform(startX + 1, isleY, w - 2);
+    for (let cx = startX + 2; cx < startX + w - 1; cx += ri(3, 5)) {
+      addCandle(cx, isleY, rnd() < 0.35 ? takeDrop() : null);
+    }
+    // treasure at the heart of the island
+    Level.treasures.push({
+      x: (startX + (w >> 1)) * TILE, y: (isleY - 1) * TILE,
+      kind: 'chest',
+    });
+    Level.treasures.push({
+      x: (startX + (w >> 1) - 2) * TILE, y: (isleY - 1) * TILE,
+      kind: rnd() < 0.5 ? 'relic' : 'scroll',
+      data: rollRelic(0.7 + stage * 0.12),
+    });
+    // a bat watches the sky island — it is not abandoned
+    Level.bats.push({ x: (startX + (w >> 1)) * TILE, y: (isleY - 7) * TILE });
+    Level.sigils.push({ x: (startX + (w >> 1)) * TILE + 4, y: (isleY + 3) * TILE, icon: 'wing' });
+    x += len + 1;
+  }
+
+  // VOID HALL: the deep, vertical abyss with narrow ledges, floating platforms,
+  // and writhing shadows that reflect what you carry back at you.
+  function segVoidhall(len) {
+    rectFill(x, G, x + 3, G + 1, 1);
+    noteGround(x, x + 3, G);
+    let cx = x + 4;
+    while (cx < x + len - 4) {
+      // staggered ledges at different heights
+      const ledgeY = G - ri(0, 4);
+      const ledgeW = ri(4, 8);
+      for (let lx = 0; lx < ledgeW; lx++) {
+        tset(cx + lx, ledgeY, 1);
+        tset(cx + lx, ledgeY + 1, 4);
+      }
+      // pit beneath the ledge
+      for (let py = ledgeY + 2; py <= G + 2; py++) {
+        if (py < LEVEL_H) tset(cx + (ledgeW >> 1), py, 15);
+      }
+      noteGround(cx, cx + ledgeW, ledgeY);
+      if (rnd() < 0.5) addCandle(cx + 1, ledgeY);
+      if (rnd() < 0.4) {
+        platform(cx + 1, ledgeY - 3, 3);
+        if (rnd() < 0.3) Level.treasures.push({ x: (cx + 2) * TILE, y: (ledgeY - 5) * TILE, kind: 'gem' });
+      }
+      // wraiths patrol the deep halls
+      if (rnd() < 0.5) Level.wraiths.push({ x: (cx + (ledgeW >> 1)) * TILE, y: (ledgeY - 4) * TILE });
+      cx += ledgeW;
+      const gap = ri(1, 3);
+      for (let gx = 0; gx < gap; gx++) {
+        if (cx + gx < LEVEL_W) tset(cx + gx, ledgeY, 15);
+      }
+      cx += gap;
+    }
+    rectFill(x + len - 3, G, x + len, G + 1, 1);
+    noteGround(x + len - 3, x + len, G);
+    Level.bats.push({ x: (x + (len >> 1)) * TILE, y: (G - 8) * TILE });
+    x += len + 1;
+  }
+
   // Name each stretch as it is built. The geometry may be random, but the
   // castle's regions are designed — that is what the chart shows the hunter.
   const REGION_NAMES = {
@@ -859,6 +981,9 @@ function buildZoneInto(zone, startX) {
     foundry: ['THE CRUCIBLE WALK', 'THE MELT', 'THE HAMMER FLOOR', 'THE SLAG GALLERY'],
     gallery: ['THE HALL OF GLASS', 'THE SILVERED WALK', 'THE TWIN\'S GALLERY', 'THE FACING ROOM'],
     frostwalk: ['THE RIME LEDGE', 'THE WHITE CORNICE', 'THE FROZEN WALK', 'THE ICEFALL'],
+    skybridge: ['THE CLOUD BRIDGE', 'THE WIND-SCOURED SPAN', 'THE HIGH TETHER'],
+    skyisland: ['THE FLOATING ISLE', 'THE LONE ROCK', 'THE SKY THRONE'],
+    voidhall: ['THE VOID ARCADE', 'THE BLACK NAVE', 'THE HUNGRY CORRIDOR', 'THE DEEP GALLERY'],
     approach: ['THE GUARDIAN\'S ROAD'],
     arena: ['THE GUARDIAN\'S HALL'],
   };
@@ -896,6 +1021,9 @@ function buildZoneInto(zone, startX) {
   const segFoundryR = withRegion('foundry', segFoundry);
   const segGalleryR = withRegion('gallery', segGallery);
   const segFrostwalkR = withRegion('frostwalk', segFrostwalk);
+  const segSkybridgeR = withRegion('skybridge', segSkybridge);
+  const segSkyislandR = withRegion('skyisland', segSkyisland);
+  const segVoidhallR = withRegion('voidhall', segVoidhall);
 
   // ---- assemble the stage
   segGroundR(ri(14, 18));
@@ -924,6 +1052,9 @@ function buildZoneInto(zone, startX) {
     else if (t === 'foundry') segFoundryR(ri(22, 28));
     else if (t === 'gallery') segGalleryR(ri(24, 30));
     else if (t === 'frostwalk') segFrostwalkR(ri(20, 26));
+    else if (t === 'skybridge') segSkybridgeR(ri(22, 28));
+    else if (t === 'skyisland') segSkyislandR(ri(20, 26));
+    else if (t === 'voidhall') segVoidhallR(ri(22, 28));
     else segBattlementsR(ri(20, 24));
 
     // between halls the castle rises or falls away beneath you
@@ -1315,6 +1446,12 @@ function finishWorld() {
   {
     Level.throwers = [];
     Level.spiders = [];
+    Level.robedZombies = [];
+    Level.hellCats = [];
+    Level.bogThings = [];
+    Level.wraiths = [];
+    Level.plagueRats = [];
+    Level.caveCrawlers = [];
     for (const z of Level.zones) {
       const c0 = Math.floor(z.x0 / TILE), c1 = Math.floor(z.x1 / TILE);
       const span = Math.max(1, c1 - c0);
@@ -1338,6 +1475,25 @@ function finishWorld() {
           Level.wolves.push({ x: cx * TILE, y: gr * TILE });
         } else {
           Level.hounds.push({ x: cx * TILE, y: gr * TILE });
+        }
+        // deeper zones spawn their own horrors
+        if (z.biome === 'chapel' && z.danger >= 3 && Math.random() < 0.4) {
+          Level.robedZombies.push({ x: cx * TILE, y: gr * TILE });
+        }
+        if ((z.biome === 'foundry' || z.biome === 'keep') && z.danger >= 4 && Math.random() < 0.3) {
+          Level.hellCats.push({ x: cx * TILE, y: gr * TILE });
+        }
+        if (z.biome === 'cistern' && z.danger >= 4 && Math.random() < 0.35) {
+          Level.bogThings.push({ x: cx * TILE, y: gr * TILE });
+        }
+        if (z.biome === 'void' && z.danger >= 5 && Math.random() < 0.4) {
+          Level.wraiths.push({ x: cx * TILE, y: gr * TILE });
+        }
+        if (z.danger >= 5 && Math.random() < 0.2) {
+          Level.plagueRats.push({ x: cx * TILE, y: gr * TILE });
+        }
+        if ((z.biome === 'frost' || z.biome === 'catacombs') && z.danger >= 4 && Math.random() < 0.25) {
+          Level.caveCrawlers.push({ x: cx * TILE, y: gr * TILE });
         }
       }
     }
@@ -3272,6 +3428,8 @@ const BACKDROP = {
   foundry: { sky: null, wall: wallFoundry, air: 'rgba(200,90,30,0.10)', veil: 'rgba(10,4,2,0.30)' },
   gallery: { sky: null, wall: wallGallery, air: 'rgba(150,130,210,0.10)', veil: 'rgba(8,6,16,0.36)' },
   frost: { sky: drawGraveSky, wall: wallFrost, air: 'rgba(150,205,240,0.12)', veil: 'rgba(6,10,18,0.22)' },
+  sky: { sky: drawNightSky, wall: wallCastle, air: 'rgba(120,200,250,0.14)', veil: 'rgba(6,8,18,0.16)' },
+  void: { sky: drawVoidSky, wall: wallCatacombs, air: 'rgba(50,30,90,0.14)', veil: 'rgba(0,0,0,0.30)' },
 };
 
 function drawBackground(g, camX, camY, time, skyOnly, biome) {
@@ -3293,8 +3451,19 @@ function drawBackground(g, camX, camY, time, skyOnly, biome) {
   bd.wall(g, camX, camY, time, hy);
 
   if (bd.air) {
+    // biome air hue breathes slowly in and out over time, so no two visits feel
+    // exactly the same colour. Different biomes breathe at different rates.
+    const breath = (biome) => {
+      if (biome === 'foundry') return 0.94 + 0.06 * Math.sin(time * 0.02);
+      if (biome === 'void' || biome === 'catacombs') return 0.92 + 0.08 * Math.sin(time * 0.015);
+      if (biome === 'lunar') return 0.90 + 0.10 * Math.sin(time * 0.025);
+      if (biome === 'sky') return 0.88 + 0.12 * Math.sin(time * 0.022);
+      return 1.0;
+    };
+    g.globalAlpha = breath(biome);
     g.fillStyle = bd.air;
     g.fillRect(0, 0, VIEW_W, VIEW_H);
+    g.globalAlpha = 1.0;
   }
   // Everything behind the play plane is pushed down in value and contrast, so
   // the tiles you can actually stand on stay the brightest thing on screen.

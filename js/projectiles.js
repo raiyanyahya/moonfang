@@ -362,10 +362,17 @@ class BombProj {
   hitbox() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
   boom() {
     this.remove = true;
-    burst(this.x + 5, this.y + 5, ['#ff9020', '#ffd858', '#e8e4d8'], 22, 2.4, 0.02);
-    burstRing(this.x + 5, this.y + 5, '#ff9020');
+    const colors = this.darkflame ? ['#7a3ac0', '#c060e0', '#e8e4d8'] : ['#ff9020', '#ffd858', '#e8e4d8'];
+    const ringColor = this.darkflame ? '#7a5ac0' : '#ff9020';
+    burst(this.x + 5, this.y + 5, colors, 22, 2.4, 0.02);
+    burstRing(this.x + 5, this.y + 5, ringColor);
     game.addShake(4);
     AudioSys.sfxCrash();
+    if (this.darkflame) {
+      for (const dx of [-20, 0, 20]) {
+        game.projectiles.push(new DarkFirePool(this.x + dx, Math.floor((this.y + 10) / TILE) * TILE));
+      }
+    }
     for (const e of game.enemies) {
       if (e.remove || !e.hitbox || !e.hurt) continue;
       const eb = e.hitbox();
@@ -470,6 +477,159 @@ class ShurikenProj {
     for (let i = 0; i < 4; i++) {
       const th = a + i * Math.PI / 2;
       g.fillRect(Math.round(dx + Math.cos(th) * 4) - 1, Math.round(dy + Math.sin(th) * 4) - 1, 3, 3);
+    }
+  }
+}
+
+// Void Shard: a dark crystal that phases through enemies and terrain.
+class VoidShardProj {
+  constructor(x, y, dir) {
+    this.x = x; this.y = y;
+    this.w = 14; this.h = 10;
+    this.dir = dir; this.dmg = 3; this.pierce = 4;
+    this.remove = false; this.t = 0;
+    this.hitSet = new Set();
+  }
+  hitbox() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+  update() {
+    this.t++;
+    this.x += this.dir * 3.4;
+    if (this.t % 3 === 0) spawnParticle(this.x + 7, this.y + 5, -this.dir * 0.4, (Math.random() - 0.5) * 0.3, '#7a5ac0', 10, 0);
+    if (this.t > 110) this.remove = true;
+  }
+  onHit() { if (--this.pierce <= 0) this.remove = true; }
+  draw(g, camX, camY) {
+    const dx = Math.floor(this.x - camX), dy = Math.floor(this.y - camY);
+    g.fillStyle = 'rgba(122,90,192,0.18)';
+    g.beginPath(); g.arc(dx + 7, dy + 5, 8, 0, 7); g.fill();
+    g.fillStyle = '#3a2050';
+    g.fillRect(dx + 2, dy + 2, 10, 6);
+    g.fillStyle = '#7a5ac0';
+    g.fillRect(dx + 4, dy + 1, 6, 1);
+    g.fillRect(dx + 4, dy + 8, 6, 1);
+    g.fillRect(dx + 5, dy + 3, 4, 4);
+    g.fillStyle = '#c0a8f0';
+    g.fillRect(dx + 6, dy + 4, 2, 2);
+  }
+}
+
+// Lightning Orb: travels straight, chains damage to nearby enemies on hit.
+class LightningOrbProj {
+  constructor(x, y, dir) {
+    this.x = x; this.y = y;
+    this.w = 12; this.h = 12;
+    this.vx = dir * 3.8; this.vy = 0;
+    this.dmg = 2; this.t = 0; this.remove = false;
+    this.hitSet = new Set();
+    this.lastChain = 0;
+  }
+  hitbox() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+  update() {
+    this.t++;
+    this.x += this.vx; this.y += this.vy;
+    if (this.t % 2 === 0) spawnParticle(this.x + 6, this.y + 6, -Math.sign(this.vx) * 0.5, (Math.random() - 0.5) * 0.5, '#c07af0', 8, 0);
+    if (this.t > 100) this.remove = true;
+    if (isSolid(tileAt(Math.floor((this.x + 6) / TILE), Math.floor((this.y + 6) / TILE)))) {
+      burst(this.x + 6, this.y + 6, ['#c07af0', '#f8f8ff'], 8, 1.2, 0.03);
+      this.remove = true;
+    }
+  }
+  onHit(target) {
+    burstRing(this.x + 6, this.y + 6, '#c07af0');
+    // chain to up to 2 other nearby enemies
+    const targets = game.enemies.filter(e => !e.remove && e !== target && !this.hitSet.has(e) && e.hurt &&
+      Math.abs(e.hitbox().x - this.x) < 80 && Math.abs(e.hitbox().y - this.y) < 60);
+    let chains = 0;
+    for (const e of targets) {
+      if (chains >= 2) break;
+      this.hitSet.add(e);
+      e.hurt(1);
+      const eb = e.hitbox();
+      spawnFloater(eb.x + eb.w / 2, eb.y - 6, '1', '#c07af0');
+      chains++;
+    }
+    this.remove = true;
+  }
+  draw(g, camX, camY) {
+    const dx = Math.floor(this.x - camX), dy = Math.floor(this.y - camY);
+    g.fillStyle = 'rgba(192,122,240,0.16)';
+    g.beginPath(); g.arc(dx + 6, dy + 6, 7 + Math.sin(this.t * 0.2), 0, 7); g.fill();
+    g.fillStyle = '#c07af0';
+    g.fillRect(dx + 4, dy + 4, 4, 4);
+    g.fillStyle = '#f8f8ff';
+    g.fillRect(dx + 5, dy + 5, 2, 2);
+  }
+}
+
+// Crystal Shard: fast, splits into three when it hits something.
+class CrystalShardProj {
+  constructor(x, y, dir) {
+    this.x = x; this.y = y;
+    this.w = 8; this.h = 6;
+    this.vx = dir * 5.2; this.vy = 0;
+    this.dmg = 2; this.t = 0; this.remove = false;
+    this.hitSet = new Set();
+  }
+  hitbox() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+  split() {
+    this.remove = true;
+    burst(this.x + 4, this.y + 3, ['#90f0ff', '#f8f8ff'], 6, 1, 0.04);
+    AudioSys.sfxCandle();
+    for (const s of [-0.8, 0, 0.8]) {
+      const sh = new ShurikenProj(this.x, this.y, 1, s);
+      sh.vx = this.vx * 0.5 + s * 2;
+      sh.dmg = 1;
+      game.projectiles.push(sh);
+    }
+  }
+  update() {
+    this.t++;
+    this.x += this.vx; this.y += this.vy;
+    if (this.t > 80) this.remove = true;
+    if (isSolid(tileAt(Math.floor((this.x + 4) / TILE), Math.floor((this.y + 3) / TILE)))) {
+      this.split();
+    }
+  }
+  onHit() { this.split(); }
+  draw(g, camX, camY) {
+    const dx = Math.floor(this.x - camX), dy = Math.floor(this.y - camY);
+    g.fillStyle = '#a8f0ff';
+    g.fillRect(dx + 1, dy + 2, 6, 4);
+    g.fillRect(dx + 3, dy, 2, 2);
+    g.fillStyle = '#f8f8ff';
+    g.fillRect(dx + 2, dy + 1, 1, 2);
+    g.fillRect(dx + 5, dy + 1, 1, 2);
+  }
+}
+
+// Dark Fire Pool: lingering voidflame that burns enemies who step in it.
+class DarkFirePool {
+  constructor(cx, groundY) {
+    this.x = cx - 14; this.y = groundY - 10;
+    this.w = 28; this.h = 10;
+    this.life = 140; this.t = 0;
+    this.dmg = 1;
+    this.remove = false;
+    this.isFire = true;
+  }
+  hitbox() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+  update() {
+    this.t++;
+    if (--this.life <= 0) { this.remove = true; return; }
+    if (this.t % 5 === 0) {
+      spawnParticle(this.x + Math.random() * this.w, this.y + 5,
+        (Math.random() - 0.5) * 0.3, -0.5 - Math.random() * 0.5,
+        ['#7a3ac0', '#c060e0', '#f8f8ff'][Math.random() * 3 | 0], 14, -0.01);
+    }
+  }
+  draw(g, camX, camY) {
+    const fade = this.life < 30 && (this.life & 4);
+    if (fade) return;
+    g.fillStyle = 'rgba(122,58,192,0.10)';
+    g.beginPath(); g.arc(Math.floor(this.x + 14 - camX), Math.floor(this.y + 6 - camY), 16, 0, 7); g.fill();
+    for (let i = 0; i < 4; i++) {
+      g.fillStyle = ((this.t >> 2) & 1) ? '#7a3ac0' : '#c060e0';
+      g.fillRect(Math.floor(this.x + 2 + i * 7 - camX), Math.floor(this.y + 5 - camY), 4, 3);
     }
   }
 }

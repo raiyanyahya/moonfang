@@ -141,6 +141,14 @@ const ASSET_FILES = {
   swampTrees: 'assets/swamp-trees.png',
   propStalactite: 'assets/prop-stalactite.png',
   propCrystal: 'assets/prop-crystal.png',
+  // unused assets now integrated for visual variety
+  ghostAppears: 'assets/ghost-appears.png',
+  ghostVanish: 'assets/ghost-vanish.png',
+  houndJump: 'assets/hound-jump.png',
+  houndWalk: 'assets/hound-walk.png',
+  beastBurn: 'assets/beast-burn.png',
+  fxFireBomb: 'assets/fx-fire-bomb.png',
+  fxFireBreath: 'assets/fx-fire-breath.png',
 };
 
 function loadAssets() {
@@ -264,6 +272,14 @@ function initAssetSprites() {
   Sheets.houndIdle = buildSheet('houndIdle', 6, 32, 30);
   Sheets.dragonIdle = buildSheet('dragonIdle', 6, 72, 62);
   Sheets.dragonBreath = buildSheet('dragonBreath', 7, 72, 62);
+  // newly integrated unused assets for visual variety
+  Sheets.ghostAppears = buildSheet('ghostAppears', 7, 17, 56);
+  Sheets.ghostVanish = buildSheet('ghostVanish', 4, 17, 56);
+  Sheets.houndJump = buildSheet('houndJump', 5, 33, 30);
+  Sheets.houndWalk = buildSheet('houndWalk', 6, 33, 30);
+  Sheets.beastBurn = buildSheet('beastBurn', 5, 33, 64);
+  Sheets.fxFireBomb = buildSheet('fxFireBomb', 4, 17, 17);
+  Sheets.fxFireBreath = buildSheet('fxFireBreath', 5, 32, 32);
   // effect strips, drawn centred rather than anchored at the feet
   Sheets.fxDarkBolt = buildSheet('fxDarkBolt', 12, 31, 41);
   Sheets.fxLightning = buildSheet('fxLightning', 11, 28, 63);
@@ -1058,10 +1074,73 @@ function initSprites() {
     axe: makeSprite('weap-axe', WEAP_AXE),
     spear: makeSprite('weap-spear', WEAP_SPEAR),
     claws: makeSprite('weap-claws', WEAP_CLAWS),
+    scythe: darkCopy(makeSprite('weap-axe', WEAP_AXE), '#8ada90'),
+    flail: darkCopy(makeSprite('weap-sword', WEAP_SWORD), '#c8b070'),
+    rapier: darkCopy(makeSprite('weap-spear', WEAP_SPEAR), '#e8f0ff'),
+    greatsword: darkCopy(makeSprite('weap-sword', WEAP_SWORD), '#dfe4ee'),
+    halberd: darkCopy(makeSprite('weap-axe', WEAP_AXE), '#b8bec8'),
+    daggers: darkCopy(makeSprite('weap-claws', WEAP_CLAWS), '#f0c0d0'),
+    moonchain: darkCopy(Sprites.whipItem, '#cfd8ea'),
+    warhammer: darkCopy(makeSprite('weap-axe', WEAP_AXE), '#b0a08a'),
+    nodachi: darkCopy(makeSprite('weap-sword', WEAP_SWORD), '#e0e8f4'),
+    kris: darkCopy(makeSprite('weap-spear', WEAP_SPEAR), '#9ad86a'),
+    glaive: darkCopy(makeSprite('weap-axe', WEAP_AXE), '#c8e0f0'),
+    bonelash: darkCopy(Sprites.whipItem, '#e8e0c8'),
+    crozier: darkCopy(makeSprite('weap-sword', WEAP_SWORD), '#ffe9a8'),
+    frostbrand: darkCopy(makeSprite('weap-sword', WEAP_SWORD), '#a8e8ff'),
+    censer: darkCopy(makeSprite('sub-bomb', SUB_BOMB), '#ffb060'),
+    voidfang: darkCopy(makeSprite('weap-sword', WEAP_SWORD), '#7a5ac0'),
+    sunsplitter: darkCopy(makeSprite('weap-axe', WEAP_AXE), '#ffe888'),
+    twinfire: darkCopy(makeSprite('weap-claws', WEAP_CLAWS), '#ff8040'),
+    stormglaive: darkCopy(makeSprite('weap-axe', WEAP_AXE), '#c08aff'),
+    thornwhip: darkCopy(Sprites.whipItem, '#7ad860'),
+    hearthammer: darkCopy(makeSprite('weap-axe', WEAP_AXE), '#ff6020'),
+    frostbite: darkCopy(makeSprite('weap-spear', WEAP_SPEAR), '#90f0ff'),
+    shadowscythe: darkCopy(makeSprite('weap-axe', WEAP_AXE), '#5040a0'),
+    bloodletter: darkCopy(makeSprite('weap-sword', WEAP_SWORD), '#d02030'),
+    lunarblade: darkCopy(makeSprite('weap-sword', WEAP_SWORD), '#d8e8ff'),
   };
   Sprites.bomb = makeSprite('sub-bomb', SUB_BOMB);
   Sprites.chakram = makeSprite('sub-chakram', SUB_CHAKRAM);
   Sprites.shuriken = makeSprite('sub-shuriken', SUB_SHURIKEN);
+
+  // --- new sub-weapon icons
+  Sprites.voidShard = makeSprite('void-shard', [
+    '....M.....',
+    '...MVM....',
+    '..MVVVM...',
+    '.MVVVVVM..',
+    '..MVVVM...',
+    '...MVM....',
+    '....M.....',
+  ]);
+  Sprites.lightningOrb = makeSprite('lightning-orb', [
+    '...oo...',
+    '..oVVo..',
+    '.oVWVVo.',
+    'oVWWWVVo',
+    '.oVWVVo.',
+    '..oVVo..',
+    '...oo...',
+  ]);
+  Sprites.crystalShard = makeSprite('crystal-shard', [
+    '....oo...',
+    '...oCCo..',
+    '..oCCCCo.',
+    '.oCCCCCCo',
+    '..oCCCCo.',
+    '...oCCo..',
+    '....oo...',
+  ]);
+  Sprites.darkflame = makeSprite('darkflame', [
+    '...M.....',
+    '..MvM....',
+    '.MvMvM...',
+    'MvMvMvM..',
+    '.MMMMM...',
+    '..MMM....',
+  ]);
+
   Sprites.obeliskDark = makeSprite('obelisk-dark', OBELISK_DARK);
   Sprites.obeliskLit = makeSprite('obelisk-lit', OBELISK_LIT);
   Sprites.merchant = makeSprite('merchant', MERCHANT_ART);
@@ -1112,6 +1191,8 @@ function buildBiomeAtlases() {
     foundry: tintAtlas(Sprites.tiles, 'rgba(210,120,50,0.28)', 'rgba(20,6,0,0.16)'),
     gallery: tintAtlas(Sprites.tiles, 'rgba(180,165,220,0.30)'),
     frost: tintAtlas(Sprites.tiles, 'rgba(170,215,245,0.36)'),
+    sky: tintAtlas(Sprites.tiles, 'rgba(140,200,245,0.30)', 'rgba(100,160,220,0.08)'),
+    void: tintAtlas(Sprites.tiles, 'rgba(70,50,110,0.36)', 'rgba(0,0,0,0.22)'),
   };
 }
 

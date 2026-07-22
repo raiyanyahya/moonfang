@@ -305,13 +305,25 @@ class HellHound {
   }
   draw(g, camX, camY) {
     if (this.state === 'gone') return;
-    const f = this.state === 'lunge' ? Math.floor(this.stride / HOUND_STRIDE) % 5 : 0;
-    // native art runs left; flip when heading right
     const ax = this.x + this.w / 2 - camX, ay = this.y + this.h - camY;
-    drawSheetFrame(g, Sheets.houndRun, f, ax, ay, this.dir > 0, this.flash > 0);
+    let sheet, f;
+    if (this.state === 'crouch') {
+      sheet = Sheets.houndIdle || Sheets.houndRun;
+      f = 0;
+    } else if (this.state === 'lunge' && this.vy < -1) {
+      sheet = Sheets.houndJump;
+      f = Math.floor(this.t / 7) % 5;
+    } else if (this.state === 'wait') {
+      sheet = Sheets.houndWalk;
+      f = (this.t >> 3) % 6;
+    } else {
+      sheet = Sheets.houndRun;
+      f = Math.floor(this.stride / HOUND_STRIDE) % 5;
+    }
+    drawSheetFrame(g, sheet, f, ax, ay, this.dir > 0, this.flash > 0);
     if (this.frozen > 0) {
       g.globalAlpha = 0.55;
-      drawSheetFrame(g, Sheets.houndRun, f, ax, ay, this.dir > 0, true);
+      drawSheetFrame(g, sheet, f, ax, ay, this.dir > 0, true);
       g.globalAlpha = 1;
     }
   }
@@ -367,19 +379,24 @@ class Ghost {
     if (this.t > 430) { this.state = 'vanish'; this.t = 0; }
   }
   draw(g, camX, camY) {
-    const f = (this.t >> 3) % 7;
     const flip = game.player && game.player.x < this.x;
-    let alpha = 0.85;
-    if (this.state === 'appear') alpha = 0.85 * Math.min(1, this.t / 40);
-    if (this.state === 'vanish') alpha = 0.85 * Math.max(0, 1 - this.t / 34);
-    g.globalAlpha = alpha;
-    drawSheetFrame(g, Sheets.ghostIdle, f,
-      this.x + this.w / 2 - camX, this.y + this.h + 8 - camY, flip, this.flash > 0);
-    g.globalAlpha = 1;
+    const ax = this.x + this.w / 2 - camX, ay = this.y + this.h + 8 - camY;
+    if (this.state === 'appear') {
+      const f = Math.min(6, Math.floor(this.t / 40 * 7));
+      drawSheetFrame(g, Sheets.ghostAppears, f, ax, ay, flip, this.flash > 0);
+    } else if (this.state === 'vanish') {
+      const f = Math.min(3, Math.floor(this.t / 34 * 4));
+      drawSheetFrame(g, Sheets.ghostVanish, f, ax, ay, flip, this.flash > 0);
+    } else {
+      const f = (this.t >> 3) % 7;
+      let alpha = 0.85;
+      g.globalAlpha = alpha;
+      drawSheetFrame(g, Sheets.ghostIdle, f, ax, ay, flip, this.flash > 0);
+      g.globalAlpha = 1;
+    }
     if (this.frozen > 0) {
       g.globalAlpha = 0.5;
-      drawSheetFrame(g, Sheets.ghostIdle, f,
-        this.x + this.w / 2 - camX, this.y + this.h + 8 - camY, flip, true);
+      drawSheetFrame(g, Sheets.ghostIdle, (this.t >> 3) % 7, ax, ay, flip, true);
       g.globalAlpha = 1;
     }
   }
@@ -765,5 +782,466 @@ class Spider {
     g.fillStyle = this.flash > 0 ? '#f8f8ff' : '#e04040';
     g.fillRect(dx + 4, dy + 4, 2, 2);
     g.fillRect(dx + this.w - 6, dy + 4, 2, 2);
+  }
+}
+
+// A robed acolyte: rises slow, walks, and hurls a curse instead of a rib.
+class RobedZombie {
+  constructor(x, groundY) {
+    this.homeX = x; this.groundY = groundY;
+    this.x = x; this.y = groundY - 26;
+    this.w = 14; this.h = 26;
+    this.hp = 7 + game.stage;
+    this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
+    this.state = 'wait'; this.respawn = 0;
+    this.contactDmg = 2; this.scoreVal = 280;
+    this.remove = false; this.dir = -1; this.curseT = 0;
+    this.vx = 0; this.vy = 0; this.rise = 44;
+  }
+  hitbox() { return { x: this.x + 2, y: this.y + (this.rise > 0 ? this.h * this.rise / 44 : 0), w: this.w - 4, h: this.h }; }
+  hurt(dmg) {
+    if (this.state === 'gone') return false;
+    this.hp -= dmg; this.flash = 6;
+    AudioSys.sfxHit();
+    if (this.hp <= 0) {
+      burst(this.x + this.w / 2, this.y + this.h / 2, ['#c0b0f0', '#4a3880', '#f8f8ff'], 14, 1.5, 0.05);
+      AudioSys.sfxEnemyDie();
+      game.addKillScore(this.scoreVal, this);
+      game.maybeDrop(this.x + this.w / 2, this.y, 0.22);
+      game.dropSoul('zombie', this.x, this.y, this.elite);
+      this.state = 'gone'; this.respawn = 680;
+    }
+    return true;
+  }
+  update(player) {
+    if (this.flash > 0) this.flash--;
+    if (this.fireCd > 0) this.fireCd--;
+    if (this.frozen > 0) { this.frozen--; return; }
+    this.t++;
+    if (this.rise > 0) { this.rise--; return; }
+    if (this.state === 'gone') {
+      if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
+        this.state = 'wait'; this.hp = 7 + game.stage;
+        this.x = this.homeX; this.y = this.groundY - this.h; this.rise = 44;
+      }
+      return;
+    }
+    const px = player.x + player.w / 2;
+    this.dir = px > this.x + this.w / 2 ? 1 : -1;
+    const dist = Math.abs(px - (this.x + this.w / 2));
+    const level = Math.abs(player.y + player.h - (this.y + this.h)) < 70;
+    this.vy = Math.min(this.vy + GRAV, MAX_FALL);
+    if (level && dist < 80) this.vx = -this.dir * 0.5;
+    else if (level && dist > 140) this.vx = this.dir * 0.35;
+    else this.vx = 0;
+    moveActor(this, this.vx, this.vy, true);
+    if (this.y > Level.pxH + 40) this.remove = true;
+    if (this.curseT > 0) this.curseT--;
+    if (level && dist < 200 && this.curseT <= 0) {
+      this.curseT = 120;
+      const sx = this.x + this.w / 2, sy = this.y + 6;
+      game.enemyProjectiles.push(new EnemyFireball(sx - 7, sy, this.dir * 1.8, -2.8));
+      burst(sx, sy, ['#7a5ac0', '#c0b0f0'], 5, 1, 0.03);
+      AudioSys.sfxRoar();
+    }
+  }
+  draw(g, camX, camY) {
+    if (this.state === 'gone') return;
+    if (this.rise > 0) {
+      const f = Math.min(5, ((44 - this.rise) / 44 * 6) | 0);
+      drawSheetFrame(g, Sheets.skelRobedRise, f, this.x + this.w / 2 - camX, this.y + this.h - camY, this.dir > 0, this.flash > 0);
+    } else {
+      const f = (this.t >> 3) & 7;
+      drawSheetFrame(g, Sheets.skelRobedWalk, f, this.x + this.w / 2 - camX, this.y + this.h - camY, this.dir > 0, this.flash > 0);
+    }
+    if (this.frozen > 0) {
+      g.globalAlpha = 0.55;
+      drawSheetFrame(g, Sheets.skelRobedWalk, (this.t >> 3) & 7, this.x + this.w / 2 - camX, this.y + this.h - camY, this.dir > 0, true);
+      g.globalAlpha = 1;
+    }
+  }
+}
+
+// A hell cat: fast, small, and it circles you before it strikes.
+class HellCat {
+  constructor(x, groundY) {
+    this.homeX = x; this.groundY = groundY;
+    this.w = 20; this.h = 14;
+    this.x = x; this.y = groundY - this.h;
+    this.vx = 0; this.vy = 0;
+    this.hp = 4 + Math.floor(game.stage / 2);
+    this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
+    this.state = 'prowl'; this.respawn = 0;
+    this.contactDmg = 2; this.scoreVal = 220;
+    this.remove = false; this.dir = -1; this.stride = 0;
+    this.onGround = false;
+  }
+  hitbox() { return { x: this.x + 3, y: this.y + 1, w: this.w - 6, h: this.h - 1 }; }
+  hurt(dmg) {
+    if (this.state === 'gone') return false;
+    this.hp -= dmg; this.flash = 6;
+    AudioSys.sfxHit();
+    if (this.hp <= 0) {
+      burst(this.x + this.w / 2, this.y + this.h / 2, ['#c02535', '#6e1b26'], 10, 1.3, 0.05);
+      AudioSys.sfxEnemyDie();
+      game.addKillScore(this.scoreVal, this);
+      game.maybeDrop(this.x + this.w / 2, this.y, 0.2);
+      this.state = 'gone'; this.respawn = 600;
+    }
+    return true;
+  }
+  update(player) {
+    if (this.flash > 0) this.flash--;
+    if (this.fireCd > 0) this.fireCd--;
+    if (this.frozen > 0) { this.frozen--; return; }
+    this.t++;
+    if (this.state === 'gone') {
+      if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
+        this.state = 'prowl'; this.hp = 4 + Math.floor(game.stage / 2);
+        this.x = this.homeX; this.y = this.groundY - this.h;
+      }
+      return;
+    }
+    if (this.state === 'prowl') {
+      if (Math.abs(player.x - this.x) < 160 && Math.abs(player.y - this.y) < 90) {
+        this.state = 'hunt'; this.dir = player.x > this.x ? 1 : -1;
+      }
+      this.vx = 0;
+      this.vy = Math.min(this.vy + GRAV, MAX_FALL);
+      const res = moveActor(this, this.vx, this.vy, true);
+      this.onGround = res.onGround;
+      return;
+    }
+    this.dir = player.x + player.w / 2 > this.x + this.w / 2 ? 1 : -1;
+    this.vx = this.dir * 3.2;
+    if (this.t % 50 === 0 || (Math.abs(player.x - this.x) < 30 && this.onGround)) {
+      this.vy = -4.8;
+    }
+    this.vy = Math.min(this.vy + GRAV, MAX_FALL);
+    const px = this.x;
+    const res = moveActor(this, this.vx, this.vy, true);
+    this.onGround = res.onGround;
+    if (this.onGround) this.stride += Math.abs(this.x - px);
+    if (res.hitWall) this.dir = -this.dir;
+    if (this.y > Level.pxH + 40) this.remove = true;
+    if (Math.abs(player.x - this.x) > VIEW_W + 200) this.state = 'prowl';
+  }
+  draw(g, camX, camY) {
+    if (this.state === 'gone') return;
+    const f = this.onGround ? Math.floor(this.stride / 6) % 4 : 1;
+    drawSheetFrame(g, Sheets.hellCatWalk, f, this.x + this.w / 2 - camX, this.y + this.h - camY, this.dir > 0, this.flash > 0);
+  }
+}
+
+// A bog wretch: shambles from the mire, poisons on contact, and does not die easily.
+class BogThing {
+  constructor(x, groundY) {
+    this.homeX = x; this.groundY = groundY;
+    this.w = 16; this.h = 18;
+    this.x = x; this.y = groundY - this.h;
+    this.vx = 0; this.vy = 0;
+    this.hp = 10 + game.stage * 2;
+    this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
+    this.state = 'wait'; this.respawn = 0;
+    this.contactDmg = 2; this.scoreVal = 350;
+    this.remove = false; this.dir = -1;
+    this.stride = 0; this.onGround = false;
+    this.poisonRecharge = 0;
+  }
+  hitbox() { return { x: this.x + 1, y: this.y, w: this.w - 2, h: this.h }; }
+  hurt(dmg) {
+    if (this.state === 'gone') return false;
+    this.hp -= dmg; this.flash = 6;
+    AudioSys.sfxHit();
+    if (this.hp <= 0) {
+      burst(this.x + this.w / 2, this.y + this.h / 2, ['#3a6a3a', '#5aa04a', '#8ad0a0'], 16, 1.6, 0.06);
+      AudioSys.sfxEnemyDie();
+      game.addKillScore(this.scoreVal, this);
+      game.maybeDrop(this.x + this.w / 2, this.y, 0.3);
+      // leaves a poison pool behind
+      game.projectiles.push(new FirePool(this.x + this.w / 2, Math.floor((this.y + this.h) / TILE) * TILE));
+      this.state = 'gone'; this.respawn = 800;
+    }
+    return true;
+  }
+  update(player) {
+    if (this.flash > 0) this.flash--;
+    if (this.fireCd > 0) this.fireCd--;
+    if (this.frozen > 0) { this.frozen--; return; }
+    this.t++;
+    if (this.poisonRecharge > 0) this.poisonRecharge--;
+    if (this.state === 'gone') {
+      if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
+        this.state = 'wait'; this.hp = 10 + game.stage * 2;
+        this.x = this.homeX; this.y = this.groundY - this.h;
+      }
+      return;
+    }
+    if (Math.abs(player.x - this.x) < 300 && Math.abs(player.y - this.y) < 100) {
+      this.state = 'shamble';
+    }
+    if (this.state === 'wait') { this.vx = 0; return; }
+    this.dir = player.x + player.w / 2 > this.x + this.w / 2 ? 1 : -1;
+    this.vx = this.dir * 0.55;
+    this.vy = Math.min(this.vy + GRAV, MAX_FALL);
+    const px = this.x;
+    const res = moveActor(this, this.vx, this.vy, true);
+    this.onGround = res.onGround;
+    if (this.onGround) this.stride += Math.abs(this.x - px);
+    if (this.poisonRecharge <= 0 && Math.abs(player.x - this.x) < 80) {
+      this.poisonRecharge = 80;
+      for (let i = -2; i <= 2; i++) {
+        game.enemyProjectiles.push(new EnemyFireball(this.x + this.w / 2 - 7 + i * 5, this.y + 2, this.dir * (1.5 + i * 0.4), -2.5));
+      }
+    }
+    if (this.y > Level.pxH + 40) this.remove = true;
+  }
+  draw(g, camX, camY) {
+    if (this.state === 'gone') return;
+    const f = this.state === 'wait' ? 0 : Math.floor(this.stride / 7) % 4;
+    drawSheetFrame(g, Sheets.bogWalk, f, this.x + this.w / 2 - camX, this.y + this.h - camY, this.dir > 0, this.flash > 0);
+    if (this.frozen > 0) {
+      g.globalAlpha = 0.55;
+      drawSheetFrame(g, Sheets.bogWalk, f, this.x + this.w / 2 - camX, this.y + this.h - camY, this.dir > 0, true);
+      g.globalAlpha = 1;
+    }
+  }
+}
+
+// A wailing wraith: phases through walls, screams to damage, and splits on death.
+class Wraith {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.w = 28; this.h = 34;
+    this.hp = 8 + game.stage;
+    this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
+    this.state = 'appear'; this.remove = false;
+    this.contactDmg = 3; this.scoreVal = 450;
+    this.screamT = 0;
+  }
+  hitbox() { return { x: this.x + 2, y: this.y + 4, w: this.w - 4, h: this.h - 6 }; }
+  hurt(dmg) {
+    if (this.state !== 'haunt') return false;
+    this.hp -= dmg; this.flash = 6;
+    AudioSys.sfxHit();
+    if (this.hp <= 0) {
+      if (!this.split) {
+        this.remove = true;
+        burst(this.x + this.w / 2, this.y + this.h / 2, ['#8a5ac0', '#f8f8ff', '#3a2050'], 18, 1.8, 0.04);
+        AudioSys.sfxEnemyDie();
+        game.addKillScore(this.scoreVal, this);
+        // splits into two lesser ghosts
+        for (const dx of [-8, 8]) {
+          const g = new Ghost(this.x + dx, this.y);
+          g.state = 'haunt'; g.t = 20; game.enemies.push(g);
+        }
+      } else {
+        this.remove = true;
+        burst(this.x + this.w / 2, this.y + this.h / 2, ['#a070e0', '#f8f8ff'], 10, 1.2, 0.03);
+        AudioSys.sfxEnemyDie();
+        game.addKillScore(Math.floor(this.scoreVal / 2), this);
+      }
+    }
+    return true;
+  }
+  update(player) {
+    if (this.flash > 0) this.flash--;
+    if (this.fireCd > 0) this.fireCd--;
+    if (this.frozen > 0) { this.frozen--; return; }
+    this.t++;
+    if (this.screamT > 0) this.screamT--;
+    if (this.state === 'appear') {
+      if (this.t > 50) { this.state = 'haunt'; this.t = 0; AudioSys.sfxRoar(); }
+      return;
+    }
+    const dx = player.x + player.w / 2 - (this.x + this.w / 2);
+    const dy = player.y + 8 - (this.y + this.h / 2);
+    const d = Math.max(1, Math.hypot(dx, dy));
+    this.x += dx / d * 0.7;
+    this.y += dy / d * 0.55 + Math.sin(this.t * 0.06) * 0.4;
+    if (this.screamT <= 0 && d < 160) {
+      this.screamT = 100;
+      AudioSys.sfxRoar();
+      burstRing(this.x + this.w / 2, this.y + this.h / 2, '#8a5ac0');
+      if (d < 80 && !player.dead) player.damage(2, this.x + this.w / 2, this);
+    }
+    if (this.t > 500) this.remove = true;
+  }
+  draw(g, camX, camY) {
+    let f = (this.t >> 3) % 4;
+    if (this.screamT > 80) f = 0;
+    const alpha = this.state === 'appear' ? 0.85 * Math.min(1, this.t / 50) : 0.85;
+    g.globalAlpha = alpha;
+    drawSheetFrame(g, Sheets.ghostShriek, f, this.x + this.w / 2 - camX, this.y + this.h + 6 - camY, game.player && game.player.x < this.x, this.flash > 0);
+    g.globalAlpha = 1;
+    if (this.frozen > 0) {
+      g.globalAlpha = 0.5;
+      drawSheetFrame(g, Sheets.ghostShriek, f, this.x + this.w / 2 - camX, this.y + this.h + 6 - camY, game.player && game.player.x < this.x, true);
+      g.globalAlpha = 1;
+    }
+  }
+}
+
+// A plague rat: small, fast, swarms, and its bite leaves poison.
+class PlagueRat {
+  constructor(x, groundY) {
+    this.homeX = x; this.groundY = groundY;
+    this.w = 10; this.h = 6;
+    this.x = x; this.y = groundY - this.h;
+    this.vx = 0; this.vy = 0;
+    this.hp = 2 + Math.floor(game.stage / 3);
+    this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
+    this.state = 'idle'; this.respawn = 0;
+    this.contactDmg = 1; this.scoreVal = 120;
+    this.remove = false; this.dir = -1;
+    this.onGround = false;
+  }
+  hitbox() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+  hurt(dmg) {
+    if (this.state === 'gone') return false;
+    this.hp -= dmg; this.flash = 6;
+    AudioSys.sfxHit();
+    if (this.hp <= 0) {
+      this.remove = true;
+      burst(this.x + this.w / 2, this.y + this.h / 2, ['#5a6030', '#8a9030'], 5, 0.8, 0.08);
+      AudioSys.sfxEnemyDie();
+      game.addKillScore(this.scoreVal, this);
+      game.maybeDrop(this.x + this.w / 2, this.y, 0.1);
+      // spawn another rat nearby on death for that true swarm feel
+      if (Math.random() < 0.35) {
+        const nr = new PlagueRat(this.x + (Math.random() - 0.5) * 60, this.groundY);
+        nr.state = 'hunt';
+        game.enemies.push(game.applyVariant(nr));
+      }
+    }
+    return true;
+  }
+  update(player) {
+    if (this.flash > 0) this.flash--;
+    if (this.fireCd > 0) this.fireCd--;
+    if (this.frozen > 0) { this.frozen--; return; }
+    this.t++;
+    if (this.state === 'gone') {
+      if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > 200) {
+        this.state = 'idle'; this.hp = 2 + Math.floor(game.stage / 3);
+        this.x = this.homeX; this.y = this.groundY - this.h;
+      }
+      return;
+    }
+    if (this.state === 'idle') {
+      if (Math.abs(player.x - this.x) < 120) { this.state = 'hunt'; }
+      return;
+    }
+    this.dir = player.x + player.w / 2 > this.x + this.w / 2 ? 1 : -1;
+    this.vx = this.dir * 2.8;
+    if ((this.t % 50) === 0 && this.onGround) this.vy = -3.5;
+    this.vy = Math.min(this.vy + GRAV, MAX_FALL);
+    const res = moveActor(this, this.vx, this.vy, true);
+    this.onGround = res.onGround;
+    if (res.hitWall) this.dir = -this.dir;
+    if (this.y > Level.pxH + 40) this.remove = true;
+  }
+  draw(g, camX, camY) {
+    if (this.state === 'gone') return;
+    const dx = Math.floor(this.x - camX), dy = Math.floor(this.y - camY);
+    g.fillStyle = this.flash > 0 ? '#f8f8ff' : '#4a4820';
+    g.fillRect(dx + 1, dy + 1, 8, 4);
+    g.fillStyle = this.flash > 0 ? '#f8f8ff' : '#6a6830';
+    g.fillRect(dx + 2, dy, 4, 2);
+    g.fillStyle = '#e04040';
+    g.fillRect(dx + (this.dir > 0 ? 7 : 1), dy + 2, 2, 2);
+    g.fillStyle = '#2a2810';
+    g.fillRect(dx + 2, dy + 5, 6, 1);
+    if (this.frozen > 0) {
+      g.globalAlpha = 0.55;
+      g.fillStyle = '#8ad0f0';
+      g.fillRect(dx, dy, this.w, this.h);
+      g.globalAlpha = 1;
+    }
+  }
+}
+
+// A cave crawler: clings to walls and ceilings, drops on you, and skitters.
+class CaveCrawler {
+  constructor(x, ceilY) {
+    this.homeX = x; this.ceilY = ceilY;
+    this.x = x; this.y = ceilY;
+    this.w = 16; this.h = 10;
+    this.hp = 5 + Math.floor(game.stage / 2);
+    this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
+    this.state = 'hang'; this.respawn = 0;
+    this.contactDmg = 2; this.scoreVal = 240;
+    this.remove = false; this.vx = 0; this.vy = 0;
+    this.dir = 1; this.onGround = false;
+  }
+  hitbox() { return { x: this.x + 1, y: this.y, w: this.w - 2, h: this.h }; }
+  hurt(dmg) {
+    if (this.state === 'gone') return false;
+    this.hp -= dmg; this.flash = 6;
+    AudioSys.sfxHit();
+    if (this.hp <= 0) {
+      burst(this.x + this.w / 2, this.y + this.h / 2, ['#5a4a3a', '#8a7a5a'], 8, 1.2, 0.06);
+      AudioSys.sfxEnemyDie();
+      game.addKillScore(this.scoreVal, this);
+      game.maybeDrop(this.x + this.w / 2, this.y, 0.25);
+      this.state = 'gone'; this.respawn = 550;
+    }
+    return true;
+  }
+  update(player) {
+    if (this.flash > 0) this.flash--;
+    if (this.frozen > 0) { this.frozen--; return; }
+    this.t++;
+    if (this.state === 'gone') {
+      if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
+        this.state = 'hang'; this.hp = 5 + Math.floor(game.stage / 2);
+        this.x = this.homeX; this.y = this.ceilY;
+      }
+      return;
+    }
+    const px = player.x + player.w / 2;
+    this.dir = px > this.x + this.w / 2 ? 1 : -1;
+    if (this.state === 'hang') {
+      this.y = this.ceilY + Math.sin(this.t * 0.04) * 2;
+      if (Math.abs(px - (this.x + this.w / 2)) < 50 && player.y > this.y) {
+        this.state = 'drop'; this.vy = 0;
+      }
+      return;
+    }
+    if (this.state === 'drop') {
+      this.vy = Math.min(this.vy + 0.28, 5);
+      const dropRes = moveActor(this, 0, this.vy, true);
+      if (dropRes.onGround || this.y - this.ceilY > 150 || this.t > 130) {
+        this.state = 'skitter'; this.t = 0; this.vy = 0;
+        this.onGround = dropRes.onGround;
+        if (this.y > Level.pxH) { this.state = 'hang'; this.y = this.ceilY; this.x = this.homeX; }
+      }
+      return;
+    }
+    // skitter: run along surfaces and walls
+    this.vy = Math.min(this.vy + GRAV, MAX_FALL);
+    this.vx = this.dir * 2.2;
+    const res = moveActor(this, this.vx, this.vy, true);
+    this.onGround = res.onGround;
+    if (res.hitWall) this.dir = -this.dir;
+    if (this.t > 200) { this.state = 'hang'; this.y = this.ceilY; this.x = this.homeX; }
+    if (this.y > Level.pxH + 40) { this.x = this.homeX; this.y = this.ceilY; this.state = 'hang'; }
+  }
+  draw(g, camX, camY) {
+    if (this.state === 'gone') return;
+    const dx = Math.floor(this.x - camX), dy = Math.floor(this.y - camY);
+    const body = this.flash > 0 ? '#f8f8ff' : '#3a2818';
+    const legs = this.flash > 0 ? '#f8f8ff' : '#5a3828';
+    g.fillStyle = legs;
+    for (let i = -1; i <= 1; i += 2) {
+      const twitch = Math.sin(this.t * 0.3 + i) * (this.state === 'skitter' ? 3 : 1);
+      g.fillRect(dx + (i < 0 ? -2 : this.w), dy + 4 + Math.round(twitch), 4, 1);
+      g.fillRect(dx + (i < 0 ? -2 : this.w), dy + 6, 3, 1);
+    }
+    g.fillStyle = body;
+    g.fillRect(dx + 2, dy + 2, this.w - 4, this.h - 4);
+    g.fillStyle = this.flash > 0 ? '#f8f8ff' : '#d04020';
+    g.fillRect(dx + 4, dy + 3, 3, 3);
+    g.fillRect(dx + this.w - 7, dy + 3, 3, 3);
   }
 }

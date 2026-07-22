@@ -461,6 +461,8 @@ class Player {
 
       if (input.whipPressed && this.whipTimer < 0) {
         this.whipTimer = 0;
+        this.swingPaid = false;
+        this.swingId = (this.swingId || 0) + 1;
       }
 
       if (input.dashPressed && this.whipTimer < 0 && this.dashTimer <= 0 && this.slideTimer <= 0) {

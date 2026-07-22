@@ -507,7 +507,13 @@ function resetGame(nextStage) {
     .concat(Level.wolves.map(w => game.applyVariant(game.makeElite(new MoonWolf(w.x, w.y)))))
     .concat((Level.gargoyles || []).map(gy => game.applyVariant(game.makeElite(new Gargoyle(gy.x, gy.y)))))
     .concat((Level.throwers || []).map(t2 => game.applyVariant(game.makeElite(new BoneThrower(t2.x, t2.y)))))
-    .concat((Level.spiders || []).map(sp => game.applyVariant(game.makeElite(new Spider(sp.x, sp.y)))));
+    .concat((Level.spiders || []).map(sp => game.applyVariant(game.makeElite(new Spider(sp.x, sp.y)))))
+    .concat((Level.robedZombies || []).map(rz => game.applyVariant(game.makeElite(new RobedZombie(rz.x, rz.y)))))
+    .concat((Level.hellCats || []).map(hc => game.applyVariant(game.makeElite(new HellCat(hc.x, hc.y)))))
+    .concat((Level.bogThings || []).map(bt => game.applyVariant(game.makeElite(new BogThing(bt.x, bt.y)))))
+    .concat((Level.wraiths || []).map(wr => game.applyVariant(game.makeElite(new Wraith(wr.x, wr.y)))))
+    .concat((Level.plagueRats || []).map(pr => game.applyVariant(game.makeElite(new PlagueRat(pr.x, pr.y)))))
+    .concat((Level.caveCrawlers || []).map(cc => game.applyVariant(game.makeElite(new CaveCrawler(cc.x, cc.y)))));
   game.candles = Level.candles.map(c => new Candle(c));
   game.pickups = [];
   // pre-placed treasure in gated corners of the castle
@@ -517,10 +523,10 @@ function resetGame(nextStage) {
     pk.grounded = true;
     game.pickups.push(pk);
   }
-  // one guardian per hall, each waiting in its own zone
-  const BOSS_CLASS = { GiantBat, NightmareBoss, HellBeastBoss, FinalBoss };
-  game.guardians = (Level.bosses || []).map(def => {
-    const Cls = BOSS_CLASS[def.cls] || GiantBat;
+      // one guardian per hall, each waiting in its own zone
+      const BOSS_CLASS = { GiantBat, NightmareBoss, HellBeastBoss, FinalBoss, DragonGuardian };
+      game.guardians = (Level.bosses || []).map(def => {
+        const Cls = BOSS_CLASS[def.cls] || GiantBat;
     const b = new Cls(def);
     b.arena = def;
     b.reward = def.reward;
@@ -654,14 +660,18 @@ function handleCombat() {
     for (const e of targets) {
       if (e.remove || e.markSwing === p.swingId) continue;
       if (e instanceof Zombie && e.rise > 20) continue;
+      if (e instanceof RobedZombie && e.rise > 20) continue;
       if (e instanceof Bat && e.state === 'gone') continue;
+      if (e instanceof HellCat && e.state === 'gone') continue;
+      if (e instanceof BogThing && e.state === 'gone') continue;
       if (overlap(whip, e.hitbox())) {
         e.markSwing = p.swingId;
         let dealt = whip.dmg;
         // what the weapon itself does, quite apart from any arcana
         const wd = whip.wd;
         if (wd && wd.holy && (e instanceof Zombie || e instanceof Ghost ||
-            e instanceof BoneThrower)) dealt += 3;
+            e instanceof BoneThrower || e instanceof RobedZombie ||
+            e instanceof Wraith)) dealt += 3;
         // warded variants shrug off the first blows
         if (e.shieldHits > 0) {
           e.shieldHits--;
@@ -679,12 +689,19 @@ function handleCombat() {
           game.hitstop = 2;
           const hb = e.hitbox();
           const hx = Math.max(whip.x, hb.x) + 2;
-          burst(hx, whip.y + 3, ['#f8f8ff', '#ffe080'], 5, 1.2, 0);
+          // elemental hit FX: the weapon's nature shows in the sparks it throws
+          if (wd && wd.burns) fireHit(hx, whip.y + 3);
+          else if (wd && wd.chills) frostHit(hx, whip.y + 3);
+          else if (wd && wd.holy) holyHit(hx, whip.y + 3);
+          else if (wd && wd.venom) venomHit(hx, whip.y + 3);
+          else if (wd && (wd.shadow || wd.short === 'VOID')) voidHit(hx, whip.y + 3);
+          else if (wd && wd.chain) shockHit(hx, whip.y + 3);
+          else burst(hx, whip.y + 3, ['#f8f8ff', '#ffe080'], 5, 1.2, 0);
           bloodBurst(hx, whip.y + 3, p.facing, e instanceof MedusaHead ? BLOOD_GREEN : BLOOD_RED);
           spawnFloater(hb.x + hb.w / 2, hb.y - 6, String(whip.dmg));
           if (wd && wd.chills && e !== game.boss && e.frozen !== undefined && e.hp > 0) {
             e.frozen = Math.max(e.frozen, 40);
-            burst(hb.x + 6, hb.y + 6, ['#a8e8ff', '#f0fbff'], 5, 1, 0);
+            frostHit(hb.x + 6, hb.y + 6);
           }
           if (wd && wd.venom && e.hp > 0) e.poisoned = Math.max(e.poisoned || 0, 200);
           if (wd && wd.quake) {
@@ -754,6 +771,31 @@ function handleCombat() {
             spawnFloater(hb.x + hb.w / 2, hb.y - 13, 'PETRIFY', '#ffe080');
             AudioSys.sfxPetrify();
             burstRing(hb.x + hb.w / 2, hb.y + hb.h / 2, '#b8c0cc');
+          }
+          // blood price: the weapon drinks from its wielder
+          if (wd && wd.bloodprice && !p.swingPaid) {
+            p.swingPaid = true;
+            if (p.hp > 1) p.hp -= wd.bloodprice;
+            spawnFloater(p.x + p.w / 2, p.y - 8, 'BLOOD PRICE', '#d02030');
+          }
+          // storm chain: weapon's own lightning leaps
+          if (wd && wd.chain) {
+            const other = targets.find(o => o !== e && !o.remove && o.hitbox &&
+              Math.abs(o.hitbox().x - hb.x) < 90 && Math.abs(o.hitbox().y - hb.y) < 60);
+            if (other && other.hurt) {
+              other.hurt(1);
+              const ob = other.hitbox();
+              spawnFloater(ob.x + ob.w / 2, ob.y - 6, '1', '#c07af0');
+              burstRing(ob.x + ob.w / 2, ob.y + ob.h / 2, '#c07af0');
+            }
+          }
+          // double tap: the twin blades hit twice
+          if (wd && wd.doubletap && !e.markDoubleTap) {
+            e.markDoubleTap = true;
+            if (e.hurt(Math.ceil(dealt * 0.6))) {
+              spawnFloater(hb.x + hb.w / 2, hb.y - 10, String(Math.ceil(dealt * 0.6)));
+              burst(hb.x + 6, hb.y + 6, ['#ff8040'], 3, 0.8, 0);
+            }
           }
         }
       }
@@ -840,8 +882,11 @@ function handleCombat() {
     for (const e of targets) {
       if (e.remove || e.markPlunge === p.plungeId) continue;
       if (e instanceof Zombie && e.rise > 20) continue;
+      if (e instanceof RobedZombie && e.rise > 20) continue;
       if (e instanceof Bat && e.state === 'gone') continue;
       if (e instanceof HellHound && e.state === 'gone') continue;
+      if (e instanceof HellCat && e.state === 'gone') continue;
+      if (e instanceof BogThing && e.state === 'gone') continue;
       if (overlap(plunge, e.hitbox())) {
         e.markPlunge = p.plungeId;
         if (e.hurt(plunge.dmg)) {
@@ -862,7 +907,10 @@ function handleCombat() {
     for (const e of targets) {
       if (e.remove || e.markSlide === p.slideId) continue;
       if (e instanceof Zombie && e.rise > 20) continue;
+      if (e instanceof RobedZombie && e.rise > 20) continue;
       if (e instanceof Bat && e.state === 'gone') continue;
+      if (e instanceof HellCat && e.state === 'gone') continue;
+      if (e instanceof BogThing && e.state === 'gone') continue;
       if (overlap(slide, e.hitbox())) {
         e.markSlide = p.slideId;
         if (e.hurt(slide.dmg)) {
@@ -886,6 +934,9 @@ function handleCombat() {
     if (e instanceof Zombie && e.rise > 0) continue;
     if (e instanceof Bat && e.state === 'perch') continue;
     if (e instanceof Ghost && e.state !== 'haunt') continue; // half-formed shades can't touch you
+    if (e instanceof Wraith && e.state !== 'haunt') continue;
+    if (e instanceof RobedZombie && e.rise > 0) continue;
+    if (e instanceof PlagueRat && e.state === 'idle') continue;
     if (e === game.boss && game.boss.dead) continue;
     if (overlap(pb, e.hitbox())) {
       if (p.invuln <= 0 && e.variant) {
@@ -954,6 +1005,7 @@ function handleProjectiles() {
       for (const e of targets) {
         if (e.fireCd > 0) continue;
         if (e instanceof Zombie && e.rise > 20) continue;
+        if (e instanceof RobedZombie && e.rise > 20) continue;
         if (e instanceof Bat && e.state === 'gone') continue;
         if (overlap(hb, e.hitbox())) {
           e.fireCd = 18;
@@ -969,6 +1021,7 @@ function handleProjectiles() {
     for (const e of targets) {
       if (pr.hitSet.has(e)) continue;
       if (e instanceof Zombie && e.rise > 20) continue;
+      if (e instanceof RobedZombie && e.rise > 20) continue;
       if (e instanceof Bat && e.state === 'gone') continue;
       if (overlap(hb, e.hitbox())) {
         pr.hitSet.add(e);
@@ -976,7 +1029,7 @@ function handleProjectiles() {
         const inf = pr.infusion;
         if (inf === 'stone') dealt += 2;
         if (inf === 'shadow') dealt += 1;
-        if (inf === 'holy' && (e instanceof Zombie || e instanceof Ghost)) dealt += 2;
+        if (inf === 'holy' && (e instanceof Zombie || e instanceof Ghost || e instanceof RobedZombie || e instanceof Wraith || e instanceof BoneThrower)) dealt += 2;
         if (inf === 'moon' && Math.random() < 0.2) {
           dealt *= 2;
           spawnFloater(e.hitbox().x + 6, e.hitbox().y - 12, 'TRUE STRIKE', '#d8d0f0');
@@ -1164,13 +1217,23 @@ function drawMotes(g) {
 
 // ---------------------------------------------------------------- storm over the battlements
 const weather = { drops: [], flashT: 0, bolt: null, nextStrike: 300, thunderIn: -1 };
+const ambientSpecks = [];  // biome-specific floating particles
 
 function rainFactor() {
   const px = game.player ? game.player.x : -999;
-  if (px < Level.rainX0 - 120 || px > Level.rainX1 + 120) return 0;
-  return Math.max(0, Math.min(1,
-    (px - (Level.rainX0 - 120)) / 140,
-    ((Level.rainX1 + 120) - px) / 140));
+  // rain in battlements, graveyard, sky zones — any place with open sky
+  if (px >= Level.rainX0 - 120 && px <= Level.rainX1 + 120) {
+    return Math.max(0, Math.min(1,
+      (px - (Level.rainX0 - 120)) / 140,
+      ((Level.rainX1 + 120) - px) / 140));
+  }
+  // also rain at any zone with exposed sky
+  const z = typeof zoneAt === 'function' ? zoneAt(px) : null;
+  if (z && (z.biome === 'graveyard' || z.biome === 'sky' || z.biome === 'frost')) {
+    const zc = (z.x0 + z.x1) / 2;
+    return Math.max(0, Math.min(1, 1 - Math.abs(px - zc) / ((z.x1 - z.x0) / 2 + 100)));
+  }
+  return 0;
 }
 
 function updateWeather() {
@@ -1223,12 +1286,20 @@ function updateWeather() {
 }
 
 function drawRain(g, camX, camY) {
+  const z = typeof zoneAt === 'function' ? zoneAt(game.player ? game.player.x : 0) : null;
+  const isSnow = z && z.biome === 'frost';
   for (const d of weather.drops) {
     const sx = Math.floor(d.x - camX), sy = Math.floor(d.y - camY);
     if (sx < -2 || sx > VIEW_W + 2 || sy < -6 || sy > VIEW_H + 2) continue;
-    g.fillStyle = d.vy > 5.4 ? 'rgba(190,198,235,0.45)' : 'rgba(150,160,205,0.32)';
-    g.fillRect(sx, sy, 1, 5);
-    g.fillRect(sx + 1, sy - 2, 1, 2);
+    if (isSnow) {
+      g.fillStyle = d.vy > 2 ? 'rgba(200,220,240,0.35)' : 'rgba(240,248,255,0.5)';
+      g.fillRect(sx, sy, 2, 2);
+      g.fillRect(sx + 1, sy - 1, 1, 1);
+    } else {
+      g.fillStyle = d.vy > 5.4 ? 'rgba(190,198,235,0.45)' : 'rgba(150,160,205,0.32)';
+      g.fillRect(sx, sy, 1, 5);
+      g.fillRect(sx + 1, sy - 2, 1, 2);
+    }
   }
   // the bolt itself is visible only during the bright strobe
   if (weather.flashT > 8 && weather.bolt) {
@@ -1254,6 +1325,60 @@ function drawLightningFlash(g) {
   const a = t > 11 ? 0.32 : t > 8 ? 0.06 : t > 5 ? 0.2 : 0.03 * t;
   g.fillStyle = `rgba(222,228,255,${a.toFixed(3)})`;
   g.fillRect(0, 0, VIEW_W, VIEW_H);
+}
+
+// Biome-specific ambient floating particles: embers in foundry, spores in catacombs,
+// snowflakes in frost, void motes in void.
+function updateAmbientSpecks() {
+  const px = game.player ? game.player.x : -999;
+  const z = typeof zoneAt === 'function' ? zoneAt(px) : null;
+  const biome = z ? z.biome : null;
+  let type = null, want = 0;
+  if (biome === 'foundry') { type = 'ember'; want = 18; }
+  else if (biome === 'catacombs' || biome === 'void') { type = 'spore'; want = 14; }
+  else if (biome === 'frost') { type = 'snow'; want = 22; }
+  else if (biome === 'sky') { type = 'cloud'; want = 10; }
+
+  while (ambientSpecks.length < want && want > 0) {
+    ambientSpecks.push({
+      x: game.camX + Math.random() * (VIEW_W + 40),
+      y: game.camY - 10 + Math.random() * (VIEW_H + 30),
+      vy: type === 'ember' ? -0.6 - Math.random() * 0.5 : type === 'spore' ? -0.1 - Math.random() * 0.15 : type === 'snow' ? 0.3 + Math.random() * 0.4 : -0.15 - Math.random() * 0.2,
+      vx: type === 'ember' ? (Math.random() - 0.5) * 0.5 : type === 'spore' ? Math.sin(Math.random() * 7) * 0.3 : type === 'snow' ? (Math.random() - 0.5) * 0.4 : (Math.random() - 0.5) * 0.2,
+      life: type === 'ember' ? 60 + Math.random() * 40 : type === 'spore' ? 120 + Math.random() * 80 : type === 'snow' ? 90 + Math.random() * 60 : 80 + Math.random() * 40,
+      type,
+    });
+  }
+  for (let i = ambientSpecks.length - 1; i >= 0; i--) {
+    const s = ambientSpecks[i];
+    s.x += s.vx; s.y += s.vy;
+    s.life--;
+    if (s.life <= 0 || s.x < game.camX - 40 || s.x > game.camX + VIEW_W + 40 ||
+        s.y < game.camY - 40 || s.y > game.camY + VIEW_H + 40) ambientSpecks.splice(i, 1);
+    if (s.type === 'ember' && Math.random() < 0.1) s.vx += (Math.random() - 0.5) * 0.3;
+  }
+}
+
+function drawAmbientSpecks(g, camX, camY) {
+  for (const s of ambientSpecks) {
+    const sx = Math.floor(s.x - camX), sy = Math.floor(s.y - camY);
+    if (sx < 0 || sx > VIEW_W || sy < 0 || sy > VIEW_H) continue;
+    const alpha = s.type === 'ember' ? 0.6 + Math.random() * 0.3 : s.type === 'spore' ? 0.4 + Math.random() * 0.2 : s.type === 'snow' ? 0.5 + Math.random() * 0.3 : 0.3 + Math.random() * 0.2;
+    if (s.type === 'ember') {
+      g.fillStyle = ['rgba(255,160,40,', 'rgba(255,220,80,', 'rgba(228,80,50,'][((game.time >> 2) + Math.floor(s.x)) % 3] + alpha.toFixed(2) + ')';
+      g.fillRect(sx, sy, 2, 2);
+    } else if (s.type === 'spore') {
+      g.fillStyle = 'rgba(90,170,140,' + alpha.toFixed(2) + ')';
+      g.fillRect(sx, sy, 1, 1);
+    } else if (s.type === 'snow') {
+      g.fillStyle = 'rgba(220,240,255,' + alpha.toFixed(2) + ')';
+      g.fillRect(sx, sy, 2, 2);
+      g.fillRect(sx + 1, sy - 1, 1, 1);
+    } else {
+      g.fillStyle = 'rgba(180,210,240,' + alpha.toFixed(2) + ')';
+      g.fillRect(sx, sy, 2, 2);
+    }
+  }
 }
 
 // ---------------------------------------------------------------- camera
@@ -1403,6 +1528,33 @@ function craft(rec) {
     p.materials[rec.mat] = (p.materials[rec.mat] || 0) + n;
     spawnFloater(p.x + p.w / 2, p.y - 10, '+' + n + ' ' + MATERIALS[rec.mat].short,
       MATERIALS[rec.mat].color);
+  } else if (rec.kind === 'voidrite') {
+    for (const e of game.enemies) {
+      if (!e.remove && e.frozen !== undefined) e.frozen = Math.max(e.frozen, 260);
+    }
+    spawnFloater(p.x + p.w / 2, p.y - 10, 'THE VOID ANSWERS', '#7a5ac0');
+    burstRing(p.x + p.w / 2, p.y + 8, '#7a5ac0');
+    game.watchFlash = 30;
+  } else if (rec.kind === 'pyre') {
+    for (const e of game.enemies) {
+      if (e.remove || !e.hurt) continue;
+      const eb = e.hitbox();
+      if (Math.abs(eb.x - p.x) < 200) {
+        e.hurt(6);
+        burst(eb.x + eb.w / 2, eb.y + eb.h / 2, ['#ff6020', '#ffd858'], 8, 1.3, 0.02);
+      }
+    }
+    if (game.boss && game.bossActive && !game.boss.dead && Math.abs(game.boss.x - p.x) < 200) {
+      game.boss.hurt(10);
+    }
+    spawnFloater(p.x + p.w / 2, p.y - 10, 'FUNERAL PYRE!', '#ff6020');
+    burstRing(p.x + p.w / 2, p.y + 8, '#ff6020');
+    game.addShake(6);
+  } else if (rec.kind === 'soulbind') {
+    p.maxHp += 8; p.hp = p.maxHpTotal();
+    p.hearts += 10;
+    spawnFloater(p.x + p.w / 2, p.y - 10, 'SOUL BOUND', '#c07af0');
+    burstRing(p.x + p.w / 2, p.y + 8, '#c07af0');
   }
   return true;
 }
@@ -2184,6 +2336,7 @@ function stepGame() {
       if (game.card && --game.card.t <= 0) game.card = null;
       updateParticles();
       updateMotes();
+      updateAmbientSpecks();
       updateWeather();
       updateCamera();
       if (game.stageBanner > 0) game.stageBanner--;
@@ -2593,6 +2746,17 @@ function drawWorld(g) {
           p.x + p.w / 2 - camX, p.y + p.h - camY, p.facing < 0, true);
       }
     } else {
+      // weapon aura: special weapons cast a subtle glow around the hunter
+      const p = game.player;
+      const wd = p.weaponDef();
+      if (wd && (wd.burns || wd.holy || wd.shadow || wd.short === 'VOID' || wd.short === 'LUNA' || wd.short === 'SUN')) {
+        const auraColor = wd.burns ? '255,128,48' : wd.holy ? '255,224,128' : '122,90,192';
+        const a = 0.06 + 0.03 * Math.sin(game.time * 0.12);
+        g.fillStyle = 'rgba(' + auraColor + ',' + a.toFixed(4) + ')';
+        g.beginPath();
+        g.arc(Math.floor(p.x + p.w / 2 - camX), Math.floor(p.y + p.h / 2 - camY), 32, 0, 7);
+        g.fill();
+      }
       game.player.draw(g, camX, camY);
     }
   }
@@ -2638,6 +2802,7 @@ function drawWorld(g) {
   drawFloaters(g, camX, camY);
   drawGate(g, camX, camY);
   drawRain(g, camX, camY);
+  drawAmbientSpecks(g, camX, camY);
   drawFog(g, camX, camY, game.time);
   // color grading + vignette
   g.fillStyle = 'rgba(26,14,46,0.10)';
@@ -2663,6 +2828,27 @@ function drawWorld(g) {
   // damage flash
   if (game.player && game.player.hurtTimer > 14) {
     g.fillStyle = 'rgba(190,30,40,0.16)';
+    g.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+  // low-health pulse: a red heartbeat at the edges of the screen
+  if (game.player && game.player.hp <= game.player.maxHpTotal() * 0.3 && !game.player.dead) {
+    const pct = game.player.hp / game.player.maxHpTotal();
+    const pulse = 0.08 + 0.04 * Math.sin(game.time * 0.12) * (1 - pct);
+    g.fillStyle = `rgba(180,20,30,${pulse.toFixed(4)})`;
+    const edge = Math.round(VIEW_H * (0.4 - pct * 0.3));
+    g.fillRect(0, 0, VIEW_W, edge);
+    g.fillRect(0, VIEW_H - edge, VIEW_W, edge);
+  }
+  // poison green tinge when afflicted
+  if (game.player && game.player.poisonT > 0) {
+    const poisonAlpha = 0.04 + 0.02 * Math.sin(game.time * 0.09);
+    g.fillStyle = `rgba(40,100,30,${poisonAlpha.toFixed(4)})`;
+    g.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+  // high combo golden glow
+  if (game.combo.n >= 6) {
+    const comboAlpha = 0.02 + 0.01 * Math.min(3, (game.combo.n - 3) / 3) * Math.sin(game.time * 0.08);
+    g.fillStyle = `rgba(255,210,100,${comboAlpha.toFixed(4)})`;
     g.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 }

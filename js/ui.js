@@ -226,14 +226,42 @@ function drawHUD(g) {
   }
 
   if (game.bossActive && !game.boss.dead) {
-    drawTextCentered(g, game.boss.bossName || 'VESPERTILIO', VIEW_W / 2, VIEW_H - 19, '#e08a8a', 1);
-    const bx = VIEW_W / 2 - 52;
-    g.fillStyle = 'rgba(8,6,15,0.62)'; g.fillRect(bx, VIEW_H - 12, 104, 9);
-    goldFrame(g, bx, VIEW_H - 12, 104, 9);
-    g.fillStyle = '#3a3448'; g.fillRect(bx + 2, VIEW_H - 10, 100, 5);
-    const bw = Math.max(0, Math.round(100 * game.boss.hp / game.boss.maxHp));
-    g.fillStyle = '#8a2ce0'; g.fillRect(bx + 2, VIEW_H - 10, bw, 5);
-    g.fillStyle = '#c07af0'; g.fillRect(bx + 2, VIEW_H - 10, bw, 1);
+    const bossName = game.boss.bossName || 'VESPERTILIO';
+    const enraged = game.boss.enraged;
+    const pct = Math.max(0, game.boss.hp / game.boss.maxHp);
+    const phase = game.boss.phaseFor ? game.boss.phaseFor() : (game.boss.phase || 1);
+    // boss name with phase indicator
+    const nameStr = bossName + (phase > 1 ? '    PHASE ' + phase : '');
+    const nameColor = enraged ? '#ff6a60' : '#e08a8a';
+    drawTextCentered(g, nameStr, VIEW_W / 2, VIEW_H - 23, nameColor, 1);
+    const bx = VIEW_W / 2 - 62;
+    // wider, more dramatic HP bar with phase segments
+    g.fillStyle = 'rgba(8,6,15,0.68)'; g.fillRect(bx, VIEW_H - 14, 124, 13);
+    goldFrame(g, bx, VIEW_H - 14, 124, 13);
+    g.fillStyle = '#1a1428'; g.fillRect(bx + 2, VIEW_H - 12, 120, 9);
+    // phase separator lines
+    if (phase >= 2) {
+      g.fillStyle = '#3a3048';
+      g.fillRect(bx + 2 + Math.round(120 / 3), VIEW_H - 12, 1, 9);
+      if (phase >= 3) g.fillRect(bx + 2 + Math.round(120 * 2 / 3), VIEW_H - 12, 1, 9);
+    }
+    const bw = Math.max(0, Math.round(120 * pct));
+    // gradient bar: deep purple to bright, or red when enraged
+    const barBase = enraged ? '#c02030' : '#8a2ce0';
+    const barHi = enraged ? '#ff4040' : '#c07af0';
+    g.fillStyle = barBase; g.fillRect(bx + 2, VIEW_H - 12, bw, 9);
+    // top highlight strip
+    g.fillStyle = barHi + '80';
+    g.fillRect(bx + 2, VIEW_H - 12, bw, 3);
+    // secondary highlight
+    g.fillStyle = barHi;
+    g.fillRect(bx + 2, VIEW_H - 12, bw, 1);
+    // enraged pulse
+    if (enraged) {
+      const pulse = 0.10 + 0.05 * Math.sin(game.time * 0.2);
+      g.fillStyle = 'rgba(255,60,50,' + pulse.toFixed(3) + ')';
+      g.fillRect(bx, VIEW_H - 14, 124, 13);
+    }
   }
 }
 

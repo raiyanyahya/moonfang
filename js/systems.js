@@ -54,6 +54,59 @@ function dustPuff(x, y, n) {
   }
 }
 
+// Elemental hit effects: distinct visuals for each damage type
+function fireHit(x, y) {
+  burst(x, y, ['#ff9020', '#ffd858', '#e04040'], 6, 1.0, -0.03);
+  for (let i = 0; i < 3; i++) {
+    spawnParticle(x + (Math.random() - 0.5) * 4, y, (Math.random() - 0.5) * 0.8, -0.9 - Math.random() * 0.6,
+      '#ffd858', 10, -0.01);
+  }
+}
+
+function frostHit(x, y) {
+  for (let i = 0; i < 8; i++) {
+    const a = Math.random() * Math.PI * 2;
+    spawnParticle(x + Math.cos(a) * 3, y + Math.sin(a) * 3,
+      Math.cos(a) * 0.8, Math.sin(a) * 0.8 - 0.4,
+      '#a8e8ff', 14 + Math.random() * 8, 0.02);
+    spawnParticle(x + Math.cos(a) * 5, y + Math.sin(a) * 5,
+      Math.cos(a) * 0.5, Math.sin(a) * 0.5 - 0.2,
+      '#f0fbff', 8, 0);
+  }
+}
+
+function voidHit(x, y) {
+  burst(x, y, ['#7a5ac0', '#4a3880', '#c0a8f0'], 10, 1.3, 0.03);
+  for (let i = 0; i < 5; i++) {
+    spawnParticle(x + (Math.random() - 0.5) * 12, y + (Math.random() - 0.5) * 8,
+      0, -0.3 - Math.random() * 0.5, '#2a1848', 26, 0.04);
+  }
+}
+
+function holyHit(x, y) {
+  burstRing(x, y, '#ffe080');
+  burst(x, y, ['#ffe080', '#fff8e0', '#ffd858'], 6, 0.8, -0.02);
+}
+
+function venomHit(x, y) {
+  for (let i = 0; i < 7; i++) {
+    const a = Math.random() * Math.PI * 2;
+    spawnParticle(x + Math.cos(a) * 2, y + Math.sin(a) * 2,
+      Math.cos(a) * 1.2, Math.sin(a) * 1.2 - 0.8,
+      '#5aa04a', 16 + Math.random() * 10, 0.08);
+  }
+  burst(x, y, ['#3a8a2a', '#2a6420'], 4, 0.6, 0.05);
+}
+
+function shockHit(x, y) {
+  burstRing(x, y, '#c07af0');
+  for (let i = 0; i < 4; i++) {
+    const a = Math.random() * Math.PI * 2;
+    spawnParticle(x, y, Math.cos(a) * 2.2, Math.sin(a) * 2.2,
+      '#d0b0ff', 8, 0);
+  }
+}
+
 function updateParticles() {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
