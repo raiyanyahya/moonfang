@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Moonfang Castle</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <style>
   html, body {
     margin: 0; padding: 0;
@@ -12,7 +12,17 @@
     font-family: monospace;
     height: 100%;
     overflow: hidden;
+    /* stop mobile scroll / rubber-band / pinch-zoom on the game surface */
+    touch-action: none;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
+  /* on touch devices the game fills the full width — drop the desktop frame chrome
+     and anchor the frame to the top-left so the top HUD is never cropped
+     (the 16:9 canvas is taller than the screen, so it overflows off the bottom). */
+  html.touch #frame { border: 0; box-shadow: none; position: fixed; top: 0; left: 0; }
+  html.touch body { display: block; }
   body {
     display: flex;
     flex-direction: column;
@@ -47,11 +57,33 @@
 <body>
   <div id="frame"><canvas id="screen" width="960" height="540"></canvas></div>
   <script>
+    // Touch-first devices (phones/tablets) get the on-screen controls and full-bleed scaling.
+    // ?touch=1 / ?touch=0 forces it on/off for testing on a desktop.
+    (function () {
+      const q = new URLSearchParams(location.search).get('touch');
+      window.TOUCH = q === '1' ? true : q === '0' ? false
+        : (window.matchMedia && matchMedia('(pointer: coarse)').matches) || false;
+      if (window.TOUCH) document.documentElement.classList.add('touch');
+    })();
+
     // fill the window at any size; pixelated rendering keeps it crisp
     (function () {
       const cv = document.getElementById('screen');
       function fit() {
-        const s = Math.min((window.innerWidth - 8) / 960, (window.innerHeight - 40) / 540);
+        // the *visible* viewport (excludes the mobile URL bar; tracks orientation)
+        const vp = window.visualViewport;
+        const vw = vp ? vp.width : window.innerWidth;
+        const vh = vp ? vp.height : window.innerHeight;
+        if (window.TOUCH) {
+          // Fill the full width; the 16:9 canvas is taller than the phone screen,
+          // so it overflows off the bottom (frame is top-anchored → HUD stays visible).
+          const scale = vw / 960;
+          cv.style.width = Math.round(vw) + 'px';
+          cv.style.height = Math.round(540 * scale) + 'px';
+          return;
+        }
+        // desktop: fit the whole frame with a little breathing room
+        const s = Math.min((vw - 8) / 960, (vh - 40) / 540);
         // snap to integers when within 6% of one (perfect pixels),
         // otherwise scale smoothly so the game always fills the window
         const near = Math.round(s);
@@ -59,7 +91,11 @@
         cv.style.width = Math.round(960 * scale) + 'px';
         cv.style.height = Math.round(540 * scale) + 'px';
       }
+      window.fitCanvas = fit;
       window.addEventListener('resize', fit);
+      // mobile browsers report stale sizes right after a rotation — re-fit shortly after
+      window.addEventListener('orientationchange', () => { fit(); setTimeout(fit, 250); });
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
       fit();
     })();
   </script>
@@ -76,5 +112,6 @@
   <script src="js/player.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/touch.js"></script>
 </body>
 </html>
