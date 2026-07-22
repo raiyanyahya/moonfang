@@ -11,6 +11,27 @@ Sources: opengameart.org/content/gothicvania-patreons-collection (CC0)
              -> oldman-idle.png    (8 frames, 34x42)
 License: CC0 / Public Domain. Thank you Luis Zuno!
 
+--- Core character & background set ---
+
+Ansimuz (Luis Zuno) - CC0 / Public Domain, no attribution required:
+  opengameart.org/content/gothicvania-patreons-collection
+      Hero (Gothic Hero):
+        -> hero-idle.png, hero-run.png, hero-jump.png, hero-jump-attack.png,
+           hero-attack.png, hero-crouch.png, hero-crouch-slash.png, hero-hurt.png
+      Enemies:
+        -> demon-idle.png, demon-attack.png          (Flying Demon)
+        -> skeleton-walk.png, skeleton-rise.png      (Walking Skeleton)
+        -> ghost-idle.png, ghost-appears.png         (Dark Ghost)
+        -> nightmare-idle.png, nightmare-gallop.png  (Nightmare Creature)
+        -> beast-idle.png, beast-breath.png          (Hell Beast)
+        -> hound-run.png, wolf-run.png               (Hell Hound)
+        -> fire-skull.png                            (Fire Skull)
+      Effects:
+        -> fireball.png
+      Town parallax background:
+        -> bg-sky.png, bg-clouds.png, bg-mountains.png,
+           bg-far-buildings.png, bg-town.png
+
 --- Additional CC0 art (2026-07) ---
 
 Ansimuz (Luis Zuno) - CC0 / Public Domain, no attribution required:

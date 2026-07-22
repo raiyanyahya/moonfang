@@ -184,4 +184,5 @@ All of the above are CC0 / Public Domain. Thank you, Luis Zuno! 🙏
 
 ## 📄 License
 
-The **art assets** in `assets/` are CC0 / public domain (see credits above). A license for the **game code** has not been specified yet — add a `LICENSE` file if you intend others to reuse it.
+- **Code** — [MIT](LICENSE) © 2026 Raiyan Yahya. Use it, fork it, ship it; just keep the notice.
+- **Art** — every asset in `assets/` is **CC0 / public domain** (verified per file in [`assets/CREDITS.txt`](assets/CREDITS.txt)), so it carries no attribution or reuse obligation.
