@@ -1,5 +1,9 @@
 # 🌙 Moonfang Castle
 
+![vanilla JS](https://img.shields.io/badge/vanilla-JavaScript-f7df1e?style=flat-square&logo=javascript&logoColor=black) ![no dependencies](https://img.shields.io/badge/dependencies-none-2ea44f?style=flat-square) ![Electron desktop](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white) ![CC0 art](https://img.shields.io/badge/art-CC0-lightgrey?style=flat-square) ![mobile work in progress](https://img.shields.io/badge/mobile-work_in_progress-orange?style=flat-square)
+
+![zones](https://img.shields.io/badge/zones-19-6d28d9?style=flat-square) ![weapons](https://img.shields.io/badge/weapons-30-6d28d9?style=flat-square) ![sub-weapons](https://img.shields.io/badge/sub--weapons-19-6d28d9?style=flat-square) ![skills](https://img.shields.io/badge/skills-53-6d28d9?style=flat-square) ![recipes](https://img.shields.io/badge/recipes-194-6d28d9?style=flat-square) ![arcana pairings](https://img.shields.io/badge/arcana-52-6d28d9?style=flat-square) ![feats](https://img.shields.io/badge/feats-36-6d28d9?style=flat-square) ![bestiary](https://img.shields.io/badge/bestiary-100%2B-6d28d9?style=flat-square)
+
 ![Moonfang Castle — the cathedral nave](docs/screenshot.png)
 
 > A gothic action‑platformer roguelite. Explore **one great, procedurally‑built castle**, master a deep arsenal, and bring down its guardians to earn the traversal powers that open the way deeper in. Written from scratch in **vanilla JavaScript** on a single `<canvas>` — no engine, no framework, no runtime dependencies.
@@ -54,7 +58,7 @@ On the title screen: `R` continue last run · `Y` daily seed · `B` boss rush ·
 
 ## 📱 Play on mobile
 
-<img src="docs/mobile.png" alt="Mobile touch layout" width="520">
+> 🚧 **Work in progress.** Mobile touch controls are functional but still being polished — expect rough edges.
 
 Open the site on a phone in **landscape** and an on‑screen overlay appears automatically: a d‑pad on the left, `JMP` / `ATK` / `DSH` / `SUB` on the right, and a translucent utility row (start/pause, arcana, item crash, satchel, map). The controls only show on touch devices — append `?touch=1` to any URL to preview them on a desktop, or `?touch=0` to force them off.
 
@@ -123,6 +127,30 @@ node tools/render.js out/  # render real PNG frames of every zone, boss, and men
 ```
 
 `tools/render.js` is how the screenshots in this README were produced.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome — **especially new levels**. The castle is data‑driven, so most of a level lives in a couple of registries rather than in engine code.
+
+**Add a new level as its own branch:**
+
+1. Branch off `master`:
+   ```bash
+   git checkout -b level/<your-level-name>
+   ```
+2. Define the level as a **zone**. Each zone is an entry in `ZONES` (`js/config.js`) — its biome, floor row, the pool of rooms it draws from, a danger rating, and any boss / reward / gate — plus a **room‑grammar** builder in `js/level.js` (see `segNave`, `segCrypt`, `segFoundry`, … each wrapped by `withRegion`). A brand‑new biome also needs a `BACKDROP` and `STAGING` entry.
+3. Prove it builds and is walkable before you push:
+   ```bash
+   node tools/audit.js         # structural QA — floating props, sealed rooms, unwalkable spine
+   node tools/design.js        # pacing, difficulty curve, reward vs risk
+   node tools/smoke.js         # full-playthrough smoke test
+   node tools/render.js out/   # render frames and eyeball them
+   ```
+4. Push your branch and open a pull request.
+
+Keeping each level on its **own branch** lets them be reviewed, iterated, and merged independently — you can try a level without ever touching `master`.
 
 ---
 
