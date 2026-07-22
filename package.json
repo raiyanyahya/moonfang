@@ -34,6 +34,17 @@
       "category": "Game",
       "icon": "icon.png",
       "maintainer": "moonfang@example.com"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.games"
     }
   }
 }

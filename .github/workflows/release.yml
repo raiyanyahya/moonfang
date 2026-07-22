@@ -1,7 +1,7 @@
 name: Release
 
-# Build the desktop distributions and attach them to a GitHub Release.
-# Trigger by pushing a version tag:
+# Build the desktop distributions on each OS's native runner and attach them
+# to a single GitHub Release. Trigger by pushing a version tag:
 #     git tag v1.0.0 && git push origin v1.0.0
 # or run it by hand from the Actions tab (provide the tag to release).
 on:
@@ -19,9 +19,21 @@ permissions:
   contents: write
 
 jobs:
-  linux:
-    name: Build & release (Linux)
-    runs-on: ubuntu-latest
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest       # → AppImage + tar.gz
+            artifacts: |
+              dist/*.AppImage
+              dist/*.tar.gz
+          - os: windows-latest      # → NSIS installer (.exe)
+            artifacts: dist/*.exe
+          - os: macos-latest        # → .dmg (Apple Silicon runner → arm64)
+            artifacts: dist/*.dmg
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,22 +47,45 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # `npm run dist` == `electron-builder --linux` (AppImage + tar.gz, per package.json).
-      # `--publish never` keeps electron-builder from trying to publish itself — the
-      # upload is done explicitly below so it is easy to see and change.
-      - name: Build distributions
-        run: npm run dist -- --publish never
+      # No platform flag → electron-builder builds for the host OS using the
+      # matching win / mac / linux block in package.json. `--publish never`
+      # leaves publishing to the release job below.
+      - name: Build distribution
+        run: npx electron-builder --publish never
+        env:
+          # Unsigned macOS build — don't hunt for a signing identity on CI.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: List build output
+        shell: bash
         run: ls -lh dist
 
-      - name: Publish GitHub Release
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: ${{ matrix.artifacts }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List assets
+        run: ls -lh release-assets
+
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Moonfang Castle ${{ github.event.inputs.tag || github.ref_name }}
           generate_release_notes: true
           fail_on_unmatched_files: true
-          files: |
-            dist/*.AppImage
-            dist/*.tar.gz
+          files: release-assets/*
