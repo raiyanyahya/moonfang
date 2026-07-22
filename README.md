@@ -1,8 +1,12 @@
+<div align="center">
+
 # 🌙 Moonfang Castle
 
 ![vanilla JS](https://img.shields.io/badge/vanilla-JavaScript-f7df1e?style=flat-square&logo=javascript&logoColor=black) ![no dependencies](https://img.shields.io/badge/dependencies-none-2ea44f?style=flat-square) ![Electron desktop](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white) ![CC0 art](https://img.shields.io/badge/art-CC0-lightgrey?style=flat-square) ![mobile work in progress](https://img.shields.io/badge/mobile-work_in_progress-orange?style=flat-square)
 
 ![zones](https://img.shields.io/badge/zones-19-6d28d9?style=flat-square) ![weapons](https://img.shields.io/badge/weapons-30-6d28d9?style=flat-square) ![sub-weapons](https://img.shields.io/badge/sub--weapons-19-6d28d9?style=flat-square) ![skills](https://img.shields.io/badge/skills-53-6d28d9?style=flat-square) ![recipes](https://img.shields.io/badge/recipes-194-6d28d9?style=flat-square) ![arcana pairings](https://img.shields.io/badge/arcana-52-6d28d9?style=flat-square) ![feats](https://img.shields.io/badge/feats-36-6d28d9?style=flat-square) ![bestiary](https://img.shields.io/badge/bestiary-100%2B-6d28d9?style=flat-square)
+
+</div>
 
 ![Moonfang Castle — the cathedral nave](docs/screenshot.png)
 
@@ -156,7 +160,27 @@ Keeping each level on its **own branch** lets them be reviewed, iterated, and me
 
 ## 🎨 Credits
 
-All art is **CC0 / public domain** from the wonderful **“Gothicvania”** series by **Ansimuz (Luis Zuno)** — [ansimuz.itch.io](https://ansimuz.itch.io) / [opengameart.org](https://opengameart.org) — with additional CC0 props by *ettingrinder* and *Stealthix*. No attribution is required for these assets; it is given here gladly. See [`assets/CREDITS.txt`](assets/CREDITS.txt) for the full per‑file breakdown.
+All art in Moonfang Castle is **CC0 / public domain** — attribution isn't required, but it's given here with thanks. Everything below is from [OpenGameArt](https://opengameart.org); the full per‑file breakdown lives in [`assets/CREDITS.txt`](assets/CREDITS.txt).
+
+**[Ansimuz — Luis Zuno](https://ansimuz.itch.io)** · the bulk of the characters, tiles, and backdrops (the “Gothicvania” series):
+
+- [Gothicvania Patreon Collection](https://opengameart.org/content/gothicvania-patreons-collection)
+- [Gothicvania Cemetery Pack](https://opengameart.org/content/gothicvania-cemetery-pack)
+- [Gothicvania Church Pack](https://opengameart.org/content/gothicvania-church-pack)
+- [Gothicvania Town](https://opengameart.org/content/gothicvania-town)
+- [Gothicvania Swamp](https://opengameart.org/content/gotthicvania-swamp)
+- [Gothicvania Magic Pack 9](https://opengameart.org/content/gothicvania-magic-pack-9)
+- [Cavern Tile Set](https://opengameart.org/content/cavern-tile-set)
+- [Gothicvania Rocky Pass Environment](https://opengameart.org/content/gothicvania-rocky-pass-environment)
+- [Horror Tile Set](https://opengameart.org/content/horror-tile-set)
+- [Warped Caves Pixel Art Pack](https://opengameart.org/content/warped-caves-pixel-art-pack)
+- [Sideview Fantasy Patreon Collection](https://opengameart.org/content/sideview-fantasy-patreon-collection)
+
+**ettingrinder** · [Misc Dark Fantasy Scenery Sprites](https://opengameart.org/content/misc-dark-fantasy-scenery-sprites)
+
+**Stealthix** · [Horror Fantasy Assets](https://opengameart.org/content/horror-fantasy-assets)
+
+All of the above are CC0 / Public Domain. Thank you, Luis Zuno! 🙏
 
 ## 📄 License
 
