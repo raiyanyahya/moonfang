@@ -7,6 +7,10 @@ const VIEW_W = 960, VIEW_H = 540;
 // physics
 const GRAV = 0.22, MAX_FALL = 5.5;
 const RUN_SPEED = 1.6;
+// the risk of height: a fall taller than this (measured from its apex) hurts on
+// landing. ~7 tiles — shorter drops, and every catch-ledge the castle lays into
+// its shafts, stay free; only ignoring the footing and plunging a whole well bites.
+const FALL_SAFE = 112;
 
 // blade progression
 const WHIP_LEN = [0, 26, 30, 35];

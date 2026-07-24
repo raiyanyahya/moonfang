@@ -1,7 +1,10 @@
 // Level: tile grid built programmatically + collision queries + parallax background.
 // Tile ids: 0 empty, 1 brick (solid), 2 wooden platform (one-way), 3 spikes, 4 foundation (solid)
 
-const LEVEL_W = 4608;  // the whole castle, in one grid
+const LEVEL_W = 6400;  // the whole castle, in one grid. Nineteen zones raise a
+// natural span of ~5720 tiles; this leaves headroom for seed/path variance so the
+// last act (Dragon Roost, the Sunken Depths, the Lunar Heart) is never amputated.
+// (Was 4608 — sized for 15 zones; four were added later and fell off the map.)
 const LEVEL_H = 100;
 
 const Level = {
@@ -1235,8 +1238,10 @@ function buildZoneInto(zone, startX) {
     const oc = groundNear(target);
     if (oc !== null) Level.obelisks.push({ x: oc * TILE + 2, y: gtop(oc) * TILE, lit: false });
   }
-  // the wandering merchant sets up shop mid-stage
-  {
+  // the wandering merchant keeps a cadence, not a stall in every hall. He sets up
+  // once every four zones (Dead Cells' shop-per-biome rhythm), so meeting him is an
+  // event worth the walk rather than wallpaper. Was one per zone — ~19 a castle.
+  if (ZONES.indexOf(zone) % 4 === 1) {
     const mc = groundNear(ri(24, Math.max(28, decoEnd - 8)));
     if (mc !== null) Level.props.push({ type: 'merchant', x: mc * TILE, y: gtop(mc) * TILE });
   }
@@ -1296,6 +1301,8 @@ function buildZoneInto(zone, startX) {
   const arena = {
     zone: zone.key,
     cls: zone.boss,
+    bossName: zone.bossName || null,   // the name this hall's guardian wears
+    variant: zone.key,                 // which twist a reused class fights with
     reward: zone.reward || null,
     floorY: G * TILE,          // where a guardian that walks must stand
     danger: zone.danger,       // how deep this hall is, for its guardian's strength
@@ -3432,13 +3439,20 @@ const BACKDROP = {
   void: { sky: drawVoidSky, wall: wallCatacombs, air: 'rgba(50,30,90,0.14)', veil: 'rgba(0,0,0,0.30)' },
 };
 
-function drawBackground(g, camX, camY, time, skyOnly, biome) {
+function drawBackground(g, camX, camY, time, skyOnly, biome, a) {
   const bd = BACKDROP[biome] || BACKDROP.castle;
 
   if (skyOnly) {                       // the title screen: sky and nothing else
     drawNightSky(g, camX, camY, time, VIEW_H, true);
     return;
   }
+
+  // `a` is the layer opacity: 1 for the base backdrop, a fading fraction for the
+  // outgoing biome painted over it during a zone-border cross-fade. It multiplies
+  // every layer so a biome dissolves as a whole rather than popping in one frame.
+  a = a === undefined ? 1 : a;
+  const prevA = g.globalAlpha;
+  g.globalAlpha = a;
 
   // Where the sky gives out. The zone's own floor sets it, halved so the
   // horizon drifts rather than tracking the camera one for one.
@@ -3460,15 +3474,16 @@ function drawBackground(g, camX, camY, time, skyOnly, biome) {
       if (biome === 'sky') return 0.88 + 0.12 * Math.sin(time * 0.022);
       return 1.0;
     };
-    g.globalAlpha = breath(biome);
+    g.globalAlpha = breath(biome) * a;
     g.fillStyle = bd.air;
     g.fillRect(0, 0, VIEW_W, VIEW_H);
-    g.globalAlpha = 1.0;
+    g.globalAlpha = a;
   }
   // Everything behind the play plane is pushed down in value and contrast, so
   // the tiles you can actually stand on stay the brightest thing on screen.
   g.fillStyle = bd.veil || 'rgba(6,5,14,0.30)';
   g.fillRect(0, 0, VIEW_W, VIEW_H);
+  g.globalAlpha = prevA;
 }
 
 // ---------------------------------------------------------------- props & atmosphere

@@ -53,6 +53,8 @@
     // utility (top-right). START = enter (begin run / pause / confirm menus).
     { id: 'start', pad: 'util', glyph: '☰', title: 'Start / Pause',
       press: () => { pending.enter = true; resume(); } },
+    { id: 'heal',  pad: 'util', glyph: '✚', kind: 'heal', title: 'Drink Flask',
+      press: () => { pending.heal = true; } },
     { id: 'cards', pad: 'util', glyph: '✦', title: 'Arcana',
       press: () => { pending.q = true; } },
     { id: 'crash', pad: 'util', glyph: '✷', title: 'Item Crash',
@@ -104,6 +106,8 @@
   #tc .util button { width: clamp(34px, 8vmin, 54px); height: clamp(34px, 8vmin, 54px);
                      font-size: clamp(15px, 3.6vmin, 24px); border-radius: 10px;
                      background: rgba(18, 14, 36, 0.2); }
+  #tc .util .heal { background: rgba(60, 130, 95, 0.26); border-color: rgba(120, 235, 170, 0.5);
+                    color: #d6ffe6; }
   /* portrait: the game is a 16:9 landscape title — ask the player to rotate */
   #tc-rotate { position: fixed; inset: 0; z-index: 60; display: none;
     background: #08060f; color: #b9b0e0; pointer-events: auto;

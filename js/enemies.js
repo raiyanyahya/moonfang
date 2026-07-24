@@ -14,11 +14,12 @@ class Zombie {          // risen skeleton
     this.w = 11; this.h = 30;
     this.x = x; this.y = groundY - this.h;
     this.vx = 0; this.vy = 0;
-    this.hp = 6 + (game.stage - 1);
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(6, this.dz);
     this.rise = 44;
     this.flash = 0;
     this.animT = 0;
-    this.contactDmg = 3;
+    this.contactDmg = scaleDmg(3, this.dz);
     this.scoreVal = 100;
     this.remove = false;
     this.frozen = 0;
@@ -91,12 +92,13 @@ class Bat {
     this.homeX = x; this.homeY = y;
     this.x = x; this.y = y;
     this.w = 12; this.h = 8;
-    this.hp = 3;
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(3, this.dz);
     this.state = 'perch';       // perch | fly | gone
     this.t = 0;
     this.flash = 0;
     this.respawn = 0;
-    this.contactDmg = 2;
+    this.contactDmg = scaleDmg(2, this.dz);
     this.scoreVal = 200;
     this.remove = false;        // permanent removal (boss minions)
     this.minion = false;
@@ -130,7 +132,7 @@ class Bat {
       if (--this.respawn <= 0) {
         // only respawn while player is far away
         if (Math.abs(player.x - this.homeX) > 200) {
-          this.state = 'perch'; this.hp = 3;
+          this.state = 'perch'; this.hp = scaleHp(3, this.dz);
           this.x = this.homeX; this.y = this.homeY;
         } else this.respawn = 60;
       }
@@ -177,10 +179,11 @@ class MedusaHead {      // fire skull
     this.baseY = y;
     this.dir = dir;
     this.w = 20; this.h = 20;
-    this.hp = 3;
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(3, this.dz);
     this.t = 0;
     this.flash = 0;
-    this.contactDmg = 2;
+    this.contactDmg = scaleDmg(2, this.dz);
     this.scoreVal = 300;
     this.remove = false;
     this.frozen = 0;
@@ -232,13 +235,14 @@ class HellHound {
     this.w = 30; this.h = 17;
     this.x = x; this.y = groundY - this.h;
     this.vx = 0; this.vy = 0;
-    this.hp = 5 + (game.stage - 1);
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(5, this.dz);
     this.t = 0;
     this.flash = 0;
     this.frozen = 0; this.fireCd = 0;
     this.state = 'wait';    // wait | lunge | gone
     this.respawn = 0;
-    this.contactDmg = 3;
+    this.contactDmg = scaleDmg(3, this.dz);
     this.scoreVal = 250;
     this.remove = false;
     this.dir = -1;
@@ -266,7 +270,7 @@ class HellHound {
     this.t++;
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
-        this.state = 'wait'; this.hp = 5 + (game.stage - 1);
+        this.state = 'wait'; this.hp = scaleHp(5, this.dz);
         this.x = this.homeX; this.y = this.groundY - this.h;
       }
       return;
@@ -334,12 +338,13 @@ class Ghost {
   constructor(x, y) {
     this.x = x; this.y = y;
     this.w = 24; this.h = 30;
-    this.hp = 4 + (game.stage - 1);
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(4, this.dz);
     this.t = 0;
     this.state = 'appear';   // appear | haunt | vanish
     this.flash = 0;
     this.frozen = 0; this.fireCd = 0;
-    this.contactDmg = 3;
+    this.contactDmg = scaleDmg(3, this.dz);
     this.scoreVal = 350;
     this.remove = false;
   }
@@ -410,13 +415,15 @@ class MoonWolf {
     this.w = 22; this.h = 15;
     this.x = x; this.y = groundY - this.h;
     this.vx = 0; this.vy = 0;
-    this.hp = 4 + (game.stage - 1);
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(4, this.dz);
     this.t = 0;
     this.flash = 0;
     this.frozen = 0; this.fireCd = 0;
     this.state = 'prowl';    // prowl | hunt | gone
     this.respawn = 0;
-    this.contactDmg = 2;
+    this.jumpCd = 0;         // so it does not chain-jump against a wall
+    this.contactDmg = scaleDmg(2, this.dz);
     this.scoreVal = 300;
     this.remove = false;
     this.dir = -1;
@@ -445,7 +452,7 @@ class MoonWolf {
     this.t++;
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
-        this.state = 'prowl'; this.hp = 4 + (game.stage - 1);
+        this.state = 'prowl'; this.hp = scaleHp(4, this.dz);
         this.x = this.homeX; this.y = this.groundY - this.h;
       }
       return;
@@ -460,11 +467,18 @@ class MoonWolf {
         AudioSys.sfxDash();
       }
     } else {
-      // hunt: lope toward the prey, leaping in arcs when close
+      // hunt: lope toward the prey, leaping to pounce when close and vaulting
+      // whatever stands in the way. A wolf that cannot climb a step reads as broken.
       this.dir = player.x + player.w / 2 > this.x + this.w / 2 ? 1 : -1;
       this.vx = this.dir * 2.4;
-      if (this.onGround && Math.abs(player.x - this.x) < 70 && (this.t % 30) === 0) {
-        this.vy = -4;
+      if (this.jumpCd > 0) this.jumpCd--;
+      const pounce = this.onGround && Math.abs(player.x - this.x) < 70 && (this.t % 30) === 0;
+      // prey up on a ledge: spring for it rather than pacing helplessly below
+      const chaseUp = this.onGround && (this.y + this.h) - (player.y + player.h) > 20 &&
+        Math.abs(player.x + player.w / 2 - (this.x + this.w / 2)) < 130;
+      if (this.jumpCd <= 0 && (pounce || chaseUp)) {
+        this.vy = chaseUp ? -5.4 : -4;
+        this.jumpCd = 22;
         dustPuff(this.x + this.w / 2, this.y + this.h, 3);
       }
       if (Math.abs(player.x - this.x) > VIEW_W + 200) this.state = 'prowl';
@@ -475,7 +489,15 @@ class MoonWolf {
     this.onGround = res.onGround;
     // the paws keep pace with the ground: one frame every WOLF_STRIDE pixels
     if (this.onGround) this.stride += Math.abs(this.x - px);
-    if (res.hitWall) this.dir = -this.dir;
+    // blocked by a wall: a prowler turns back, but a hunter vaults it (once,
+    // then a cooldown — so it clears the obstacle instead of buzzing against it)
+    if (res.hitWall) {
+      if (this.state === 'hunt') {
+        if (this.onGround && this.jumpCd <= 0) { this.vy = -5.4; this.jumpCd = 20; }
+      } else {
+        this.dir = -this.dir;
+      }
+    }
     if (this.y > Level.pxH + 40) this.remove = true;
   }
   draw(g, camX, camY) {
@@ -500,12 +522,13 @@ class Gargoyle {
     this.homeX = x; this.homeY = y;
     this.x = x; this.y = y;
     this.w = 18; this.h = 20;
-    this.hp = 6 + (game.stage - 1);
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(6, this.dz);
     this.t = 0; this.flash = 0;
     this.frozen = 0; this.fireCd = 0;
     this.state = 'perch';     // perch | dive | climb | gone
     this.respawn = 0;
-    this.contactDmg = 3;
+    this.contactDmg = scaleDmg(3, this.dz);
     this.scoreVal = 400;
     this.remove = false;
     this.vx = 0; this.vy = 0;
@@ -541,7 +564,7 @@ class Gargoyle {
     this.t++;
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
-        this.state = 'perch'; this.hp = 6 + (game.stage - 1);
+        this.state = 'perch'; this.hp = scaleHp(6, this.dz);
         this.x = this.homeX; this.y = this.homeY;
       }
       return;
@@ -637,10 +660,11 @@ class BoneThrower {
     this.homeX = x; this.groundY = groundY;
     this.x = x; this.y = groundY - 26;
     this.w = 14; this.h = 26;
-    this.hp = 5 + game.stage;
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(6, this.dz);
     this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
     this.state = 'wait'; this.respawn = 0;
-    this.contactDmg = 2; this.scoreVal = 260;
+    this.contactDmg = scaleDmg(2, this.dz); this.scoreVal = 260;
     this.remove = false; this.dir = -1; this.throwT = 0;
     this.vx = 0; this.vy = 0;
   }
@@ -666,7 +690,7 @@ class BoneThrower {
     this.t++;
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
-        this.state = 'wait'; this.hp = 5 + game.stage;
+        this.state = 'wait'; this.hp = scaleHp(6, this.dz);
         this.x = this.homeX; this.y = this.groundY - this.h;
       }
       return;
@@ -710,10 +734,11 @@ class Spider {
     this.homeX = x; this.ceilY = ceilY;
     this.x = x; this.y = ceilY;
     this.w = 14; this.h = 12;
-    this.hp = 4 + Math.floor(game.stage / 2);
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(4, this.dz);
     this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
     this.state = 'hang'; this.respawn = 0;
-    this.contactDmg = 2; this.scoreVal = 220;
+    this.contactDmg = scaleDmg(2, this.dz); this.scoreVal = 220;
     this.remove = false; this.vy = 0; this.dir = 1;
   }
   hitbox() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
@@ -736,7 +761,7 @@ class Spider {
     this.t++;
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
-        this.state = 'hang'; this.hp = 4 + Math.floor(game.stage / 2);
+        this.state = 'hang'; this.hp = scaleHp(4, this.dz);
         this.x = this.homeX; this.y = this.ceilY;
       }
       return;
@@ -791,10 +816,11 @@ class RobedZombie {
     this.homeX = x; this.groundY = groundY;
     this.x = x; this.y = groundY - 26;
     this.w = 14; this.h = 26;
-    this.hp = 7 + game.stage;
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(8, this.dz);
     this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
     this.state = 'wait'; this.respawn = 0;
-    this.contactDmg = 2; this.scoreVal = 280;
+    this.contactDmg = scaleDmg(2, this.dz); this.scoreVal = 280;
     this.remove = false; this.dir = -1; this.curseT = 0;
     this.vx = 0; this.vy = 0; this.rise = 44;
   }
@@ -821,7 +847,7 @@ class RobedZombie {
     if (this.rise > 0) { this.rise--; return; }
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
-        this.state = 'wait'; this.hp = 7 + game.stage;
+        this.state = 'wait'; this.hp = scaleHp(8, this.dz);
         this.x = this.homeX; this.y = this.groundY - this.h; this.rise = 44;
       }
       return;
@@ -869,10 +895,11 @@ class HellCat {
     this.w = 20; this.h = 14;
     this.x = x; this.y = groundY - this.h;
     this.vx = 0; this.vy = 0;
-    this.hp = 4 + Math.floor(game.stage / 2);
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(4, this.dz);
     this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
     this.state = 'prowl'; this.respawn = 0;
-    this.contactDmg = 2; this.scoreVal = 220;
+    this.contactDmg = scaleDmg(2, this.dz); this.scoreVal = 220;
     this.remove = false; this.dir = -1; this.stride = 0;
     this.onGround = false;
   }
@@ -897,7 +924,7 @@ class HellCat {
     this.t++;
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
-        this.state = 'prowl'; this.hp = 4 + Math.floor(game.stage / 2);
+        this.state = 'prowl'; this.hp = scaleHp(4, this.dz);
         this.x = this.homeX; this.y = this.groundY - this.h;
       }
       return;
@@ -940,10 +967,11 @@ class BogThing {
     this.w = 16; this.h = 18;
     this.x = x; this.y = groundY - this.h;
     this.vx = 0; this.vy = 0;
-    this.hp = 10 + game.stage * 2;
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(12, this.dz);
     this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
     this.state = 'wait'; this.respawn = 0;
-    this.contactDmg = 2; this.scoreVal = 350;
+    this.contactDmg = scaleDmg(2, this.dz); this.scoreVal = 350;
     this.remove = false; this.dir = -1;
     this.stride = 0; this.onGround = false;
     this.poisonRecharge = 0;
@@ -972,7 +1000,7 @@ class BogThing {
     if (this.poisonRecharge > 0) this.poisonRecharge--;
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
-        this.state = 'wait'; this.hp = 10 + game.stage * 2;
+        this.state = 'wait'; this.hp = scaleHp(12, this.dz);
         this.x = this.homeX; this.y = this.groundY - this.h;
       }
       return;
@@ -1013,10 +1041,11 @@ class Wraith {
   constructor(x, y) {
     this.x = x; this.y = y;
     this.w = 28; this.h = 34;
-    this.hp = 8 + game.stage;
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(9, this.dz);
     this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
     this.state = 'appear'; this.remove = false;
-    this.contactDmg = 3; this.scoreVal = 450;
+    this.contactDmg = scaleDmg(3, this.dz); this.scoreVal = 450;
     this.screamT = 0;
   }
   hitbox() { return { x: this.x + 2, y: this.y + 4, w: this.w - 4, h: this.h - 6 }; }
@@ -1089,10 +1118,11 @@ class PlagueRat {
     this.w = 10; this.h = 6;
     this.x = x; this.y = groundY - this.h;
     this.vx = 0; this.vy = 0;
-    this.hp = 2 + Math.floor(game.stage / 3);
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(2, this.dz);
     this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
     this.state = 'idle'; this.respawn = 0;
-    this.contactDmg = 1; this.scoreVal = 120;
+    this.contactDmg = scaleDmg(1, this.dz); this.scoreVal = 120;
     this.remove = false; this.dir = -1;
     this.onGround = false;
   }
@@ -1123,7 +1153,7 @@ class PlagueRat {
     this.t++;
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > 200) {
-        this.state = 'idle'; this.hp = 2 + Math.floor(game.stage / 3);
+        this.state = 'idle'; this.hp = scaleHp(2, this.dz);
         this.x = this.homeX; this.y = this.groundY - this.h;
       }
       return;
@@ -1167,10 +1197,11 @@ class CaveCrawler {
     this.homeX = x; this.ceilY = ceilY;
     this.x = x; this.y = ceilY;
     this.w = 16; this.h = 10;
-    this.hp = 5 + Math.floor(game.stage / 2);
+    this.dz = dangerAt(x);
+    this.hp = scaleHp(5, this.dz);
     this.t = 0; this.flash = 0; this.frozen = 0; this.fireCd = 0;
     this.state = 'hang'; this.respawn = 0;
-    this.contactDmg = 2; this.scoreVal = 240;
+    this.contactDmg = scaleDmg(2, this.dz); this.scoreVal = 240;
     this.remove = false; this.vx = 0; this.vy = 0;
     this.dir = 1; this.onGround = false;
   }
@@ -1194,7 +1225,7 @@ class CaveCrawler {
     this.t++;
     if (this.state === 'gone') {
       if (--this.respawn <= 0 && Math.abs(player.x - this.homeX) > VIEW_W) {
-        this.state = 'hang'; this.hp = 5 + Math.floor(game.stage / 2);
+        this.state = 'hang'; this.hp = scaleHp(5, this.dz);
         this.x = this.homeX; this.y = this.ceilY;
       }
       return;

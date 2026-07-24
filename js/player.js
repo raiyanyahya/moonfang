@@ -23,6 +23,7 @@ class Player {
     this.gaze = false;     // stone gaze soul
     this.throwAnim = 0;
     this.onGround = false;
+    this.peakY = y;          // highest point of the current airborne arc (fall damage)
     this.airJumps = 0;
     this.crouching = false;
     this.whipTimer = -1;
@@ -68,7 +69,37 @@ class Player {
     this.subInfusion = null;  // forge oil applied to sub-weapons
     this.poisonT = 0;
     this.slashCount = 0;      // moon edge counter
+    // healing flasks: the only on-demand mend, and it is scarce. Refilled at
+    // obelisks, spent one at a time — so healing is a decision, never a faucet.
+    this.flaskMax = 3 + ((typeof meta !== 'undefined' && meta.flaskBonus) || 0);
+    this.flasks = this.flaskMax;
+    this.flaskT = 0;          // drink animation / feedback timer
+    this.flaskCd = 0;         // brief lock so a whole belt cannot be downed at once
   }
+
+  // Drink a flask: heals a chunk of the wounds you carry, at the cost of one of
+  // a few charges. You cannot chug mid-blow, and there is a beat between draughts.
+  useFlask() {
+    if (this.dead || this.flasks <= 0 || this.flaskCd > 0) return false;
+    if (this.hp >= this.maxHpTotal()) return false;
+    if (this.hurtTimer > 0) return false;          // not while reeling from a hit
+    this.flasks--;
+    const amt = Math.max(6, Math.ceil(this.maxHpTotal() * 0.4));
+    this.heal(amt);
+    this.flaskT = 22;
+    this.flaskCd = 40;
+    burstRing(this.x + this.w / 2, this.y + 10, '#5ad06a');
+    for (let i = 0; i < 8; i++) {
+      spawnParticle(this.x + this.w / 2 + (Math.random() - 0.5) * 10, this.y + this.h - 4,
+        (Math.random() - 0.5) * 0.6, -0.6 - Math.random() * 0.6, '#8ad0a0', 22, -0.02);
+    }
+    spawnFloater(this.x + this.w / 2, this.y - 10, '+' + amt, '#8ad0a0');
+    if (AudioSys.sfxOrb) AudioSys.sfxOrb(); else AudioSys.sfxPickup();
+    return true;
+  }
+
+  // top the belt back up to full — what a rest at an obelisk grants
+  refillFlasks() { this.flasks = this.flaskMax; }
 
   perkRank(k) { return this.perks[k] || 0; }
 
@@ -314,6 +345,8 @@ class Player {
     if (this.momentumT > 0) this.momentumT--;
     if (this.dropTimer > 0) this.dropTimer--;
     if (this.throwAnim > 0) this.throwAnim--;
+    if (this.flaskT > 0) this.flaskT--;
+    if (this.flaskCd > 0) this.flaskCd--;
     if (this.whipTimer >= 0) {
       const wd = this.weaponDef();
       this.whipTimer++;
@@ -557,6 +590,17 @@ class Player {
         if (force > 0.6) game.hitstop = Math.max(game.hitstop, 2);
         if (force > 0.35) AudioSys.sfxDash();
       }
+      // the risk of height: a drop past a safe height wounds on arrival. A
+      // deliberate plunge dive is exempt (it has its own reckoning), sure feet
+      // shrug some off, and rolling the fall with an air-dash spares you whole.
+      const over = (this.y - this.peakY) - FALL_SAFE - this.perkRank('surefoot') * TILE;
+      if (over > 0 && !this.plunging && this.airDashUses === 0 && this.invuln <= 0 && !this.dead) {
+        const dmg = Math.min(8, 1 + Math.floor(over / (TILE * 1.5)));
+        game.addShake(3 + dmg);
+        burst(this.x + this.w / 2, this.y + this.h, ['#8a6a4a', '#57536e', '#c86a4a'], 10, 1.4, 0.05);
+        this.damage(dmg, this.x + this.w / 2);
+        spawnFloater(this.x + this.w / 2, this.y - 20, 'FELL', '#e0906a');
+      }
     }
     this.onGround = res.onGround;
     if (this.onGround) {
@@ -592,6 +636,11 @@ class Player {
     else if (this.coyote > 0) this.coyote--;
     if (res.hitWall && this.airDashT > 0) this.airDashT = 0;
     if (res.hitWall && this.dashTimer > 0) this.dashTimer = 0;
+
+    // track the apex of the current airborne arc: grounded, it sits at the feet;
+    // in the air, it remembers the highest point, so a landing knows how far it fell.
+    if (this.onGround) this.peakY = this.y;
+    else this.peakY = Math.min(this.peakY, this.y);
 
     if (res.onSpike) this.damage(this.skills.ember && res.onFire ? 0 : 4,
       this.x + this.w / 2 + this.facing);

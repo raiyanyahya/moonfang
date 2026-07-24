@@ -690,10 +690,11 @@ function standOnFlatGround() {
   if (game.state !== 'bestiary') throw new Error('bestiary did not open');
   pending.beast = true; stepGame();
   if (game.state !== 'play') throw new Error('bestiary did not close');
-  // every action x attribute pairing must exist, and carry a real effect
+  // every action x attribute pairing must exist, and carry a real effect. Bonus
+  // pairings beyond the grid (e.g. attribute+attribute resonances) are allowed.
   const wantCombos = CARD_ACTIONS.length * CARD_ATTRS.length;
-  if (Object.keys(CARD_COMBOS).length !== wantCombos) {
-    throw new Error('combo count ' + Object.keys(CARD_COMBOS).length + ' want ' + wantCombos);
+  if (Object.keys(CARD_COMBOS).length < wantCombos) {
+    throw new Error('combo count ' + Object.keys(CARD_COMBOS).length + ' want >= ' + wantCombos);
   }
   for (const a of CARD_ACTIONS) for (const b of CARD_ATTRS) {
     const c = CARD_COMBOS[a + '+' + b];
@@ -1050,15 +1051,19 @@ console.log('10. pause toggles OK, final state=', game.state);
     p.y = ob.y - p.h;
     p.vx = 0; p.vy = 0; p.onGround = true;
     p.maxHp = 40; p.hp = 7; p.hearts = 2;
+    p.flasks = 0;               // an empty flask belt, to prove the rest refills it
     // something slain, waiting to return
     const slain = game.enemies.find(e => e.state === 'gone' && e.respawn !== undefined);
     if (slain) slain.respawn = 5000;
     frames(4, {});
     pending.up = true; stepGame();
     if (p.hp !== p.maxHpTotal()) throw new Error('resting did not mend: ' + p.hp);
-    if (p.hearts <= 2) throw new Error('resting gave no hearts');
+    // the rule: a rest refills the healing flasks but must NOT mint thrown-arm
+    // hearts (the old exploit) — you could stand at an obelisk and farm ammo.
+    if (p.flasks !== p.flaskMax) throw new Error('resting did not refill flasks: ' + p.flasks);
+    if (p.hearts > 2) throw new Error('resting minted hearts (the old exploit is back): ' + p.hearts);
     if (slain && slain.respawn > 100) throw new Error('the castle did not stir: ' + slain.respawn);
-    console.log('   rested at an obelisk: healed to ' + p.hp);
+    console.log('   rested at an obelisk: healed to ' + p.hp + ', flasks ' + p.flasks + '/' + p.flaskMax + ', hearts held at ' + p.hearts);
   }
   console.log('10d1. draughts + gargoyles + resting OK');
   armor(p);
@@ -1942,10 +1947,15 @@ console.log('10. pause toggles OK, final state=', game.state);
     p.hearts = 200;
     p.throwAnim = 0; p.whipTimer = -1;
     game.crashCd = 0; game.hitstop = 0;
+    // isolate the crash's cost from the world: clear stray fiends and loot so a
+    // heart dropped by an incidental kill (or one lying under the hunter's feet)
+    // can't paper over the spend and make a real crash look free.
+    game.enemies.length = 0; game.pickups.length = 0;
     const before = p.hearts;
-    let err = null;
+    let err = null, afterCrash = before;
     try {
       pending.crash = true; stepGame();
+      afterCrash = p.hearts;                       // the true post-cost total
       // stand something in the way, so every projectile's hit path is walked
       for (let n = 0; n < 3; n++) {
         const z = new Zombie(p.x + 24 + n * 18, p.y);
@@ -1957,7 +1967,7 @@ console.log('10. pause toggles OK, final state=', game.state);
       err = e;
     }
     if (err) throw new Error('item crash with ' + sk + ' threw: ' + err.message);
-    if (p.hearts >= before) throw new Error('item crash with ' + sk + ' cost nothing');
+    if (afterCrash >= before) throw new Error('item crash with ' + sk + ' cost nothing');
   }
   console.log('10crash. item crash works with all ' + SUB_KEYS.length + ' thrown arms OK');
   armor(p);

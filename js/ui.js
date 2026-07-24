@@ -27,7 +27,11 @@ function drawHUD(g) {
   // row 1 — name and health
   drawTextShadow(g, 'PLAYER', CX, R1, '#cfc7ee', 1);
   {
-    const bx = CX + 28, bw = PW - (bx - PX) - 8;
+    // the health bar reserves a strip on its right for the healing flasks, so a
+    // glance reads both wounds and mends without either crowding the other.
+    const nFlask = p.flaskMax || 0;
+    const reserve = nFlask > 0 ? nFlask * 5 + 4 : 0;
+    const bx = CX + 28, bw = PW - (bx - PX) - 8 - reserve;
     g.fillStyle = '#0a0812'; g.fillRect(bx, R1, bw, 7);
     g.fillStyle = '#3a3448'; g.fillRect(bx + 1, R1 + 1, bw - 2, 5);
     const hpw = Math.max(0, Math.round((bw - 2) * p.hp / p.maxHpTotal()));
@@ -35,6 +39,16 @@ function drawHUD(g) {
     g.fillStyle = '#ff6a70'; g.fillRect(bx + 1, R1 + 1, hpw, 1);
     g.fillStyle = '#d8a848';
     g.fillRect(bx - 1, R1 + 2, 1, 3); g.fillRect(bx + bw, R1 + 2, 1, 3);
+    // healing flasks: a filled vial is a charge in the belt; drinking empties one
+    for (let i = 0; i < nFlask; i++) {
+      const vx = bx + bw + 4 + i * 5, full = i < p.flasks;
+      const lit = full && p.flaskT > 0 && (game.time & 2);
+      g.fillStyle = '#0a0812'; g.fillRect(vx, R1, 4, 7);
+      g.fillStyle = lit ? '#f8f8ff' : full ? '#3aa85a' : '#2a2438';
+      g.fillRect(vx + 1, R1 + 2, 2, 4);
+      g.fillStyle = lit ? '#f8f8ff' : full ? '#7af0a0' : '#3a3448';
+      g.fillRect(vx + 1, R1 + 1, 2, 1);
+    }
   }
 
   // row 2 — what you carry. Each cell has its own slot, so nothing shifts.

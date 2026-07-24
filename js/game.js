@@ -8,7 +8,7 @@ ctx.imageSmoothingEnabled = false;
 
 // ---------------------------------------------------------------- input
 const keys = {};
-const pending = { jump: false, whip: false, dash: false, enter: false, up: false, downN: false, leftN: false, rightN: false, q: false, crash: false, inv: false, map: false, rush: false, beast: false, feats: false, daily: false, cont: false, weap: -1, markSpot: false, erase: false };
+const pending = { jump: false, whip: false, dash: false, enter: false, up: false, downN: false, leftN: false, rightN: false, q: false, crash: false, inv: false, map: false, rush: false, beast: false, feats: false, daily: false, cont: false, weap: -1, markSpot: false, erase: false, heal: false };
 
 const KEYMAP = {
   ArrowLeft: 'left', a: 'left',
@@ -44,6 +44,7 @@ window.addEventListener('keydown', e => {
     if (e.key === 'Delete') pending.erase = true;
     if (k === 'y') pending.daily = true;
     if (k === 'r') pending.cont = true;
+    if (k === 'h') pending.heal = true;
     if (e.key === 'F3') { game.debug = !game.debug; e.preventDefault(); }
     if (k === 'm') AudioSys.toggleMusic();
     if (k === '[' || k === ']') {
@@ -554,6 +555,7 @@ function resetGame(nextStage) {
   game.oreSwing = {};
   game.marks = [];
   game.scene = null; game.sceneCut = 0; game.sceneNameT = 0; game.camSnap = true;
+  game.lastBiome = null; game.fadeBiome = null; game.biomeFadeT = 0;
   if (!nextStage) game.stats = { kills: 0, candles: 0, items: 0, souls: 0 };
   game.card = null;
   game.watchFlash = 0;
@@ -1826,6 +1828,8 @@ function stepGame() {
         attackHeld: keys.attack || gpState.attack,
       };
       const p = game.player;
+      // drink a healing flask (H / touch ✚): the one on-demand mend, and rationed
+      if (pending.heal && !p.dead) { p.useFlask(); pending.heal = false; }
       // Up + attack hurls the sub-weapon, spending hearts (classic Castlevania)
       if (pending.whip && (keys.up || gpState.up) && p.subWeapon && !p.dead && p.whipTimer < 0 &&
           p.throwAnim <= 0 && p.hurtTimer <= 0 && p.dashTimer <= 0 && !p.crouching) {
@@ -1946,10 +1950,14 @@ function stepGame() {
         Math.abs(p.x + p.w / 2 - (ob.x + 6)) < 22 && Math.abs(p.y + p.h - ob.y) < 30);
       game.nearObelisk = restOb || null;
       if (restOb && pending.up && p.onGround && !game.nearShrine && !game.nearForge) {
+        // a rest mends your wounds and refills the flask belt — but NOT your
+        // thrown-arm hearts (those are earned in the field), and the castle wakes
+        // for it. Healing has a price; it is never a faucet you can stand and pump.
         p.hp = p.maxHpTotal();
-        p.hearts += 10;
+        p.refillFlasks();
         p.buffs = {};
         spawnFloater(p.x + p.w / 2, p.y - 12, 'RESTED', '#50d8e8');
+        spawnFloater(p.x + p.w / 2, p.y - 26, 'FLASKS REFILLED', '#5ad06a');
         burstRing(p.x + p.w / 2, p.y + 8, '#50d8e8');
         AudioSys.sfxSoul();
         game.fadeT = 20;
@@ -2592,6 +2600,7 @@ function stepGame() {
   pending.weap = -1;
   pending.markSpot = false;
   pending.erase = false;
+  pending.heal = false;
 }
 
 // ---------------------------------------------------------------- drawing
@@ -2600,10 +2609,25 @@ function drawWorld(g) {
   const shY = game.shake > 0.5 ? (Math.random() - 0.5) * game.shake : 0;
   const camX = Math.round(game.camX + shX), camY = Math.round(game.camY + shY);
 
-  // the sky (or lack of it) belongs to the zone the hunter stands in
+  // the sky (or lack of it) belongs to the zone the hunter stands in. When you
+  // cross into a zone of a different biome the backdrop must not snap — it
+  // dissolves: the new biome is laid down full, and the biome you left is painted
+  // over it fading out across ~2/3 of a second, so the wall changes like weather.
   const zone = typeof zoneAt === 'function' ? zoneAt(game.player ? game.player.x : camX) : null;
   const biome = zone ? zone.biome : 'castle';
-  drawBackground(g, camX, camY, game.time, false, biome);
+  if (game.lastBiome == null) game.lastBiome = biome;
+  if (biome !== game.lastBiome) {
+    game.fadeBiome = game.lastBiome;   // the biome being left behind
+    game.biomeFadeT = 45;
+    game.lastBiome = biome;
+  }
+  drawBackground(g, camX, camY, game.time, false, biome, 1);
+  if (game.biomeFadeT > 0 && game.fadeBiome && game.fadeBiome !== biome) {
+    drawBackground(g, camX, camY, game.time, false, game.fadeBiome, game.biomeFadeT / 45);
+    if (game.state === 'play') game.biomeFadeT--;
+  } else {
+    game.biomeFadeT = 0;
+  }
   drawProps(g, camX, camY, game.time);
   drawObelisks(g, camX, camY, game.time);
   drawSigils(g, camX, camY, game.time);

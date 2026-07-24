@@ -152,3 +152,18 @@ function hexRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
 }
+
+
+// ---------------------------------------------------------------- escalation
+// The escalation rule: a fiend's toughness and bite grow with how deep into the
+// castle it prowls. Depth is the zone's `danger` (0 at the gate .. 8 in the
+// Lunar Heart). One choke point so every enemy scales the same way, and its
+// scaled ceiling survives death and respawn.
+function dangerAt(x) {
+  const z = (typeof zoneAt === 'function') ? zoneAt(x) : null;
+  return z ? (z.danger || 0) : 0;
+}
+// toughness climbs ~28% per danger step: a 6hp fiend is 6 at the gate, ~19 deep.
+function scaleHp(base, d) { return Math.round(base * (1 + 0.28 * (d || 0))); }
+// bite climbs one point every three steps: gentle early, +3 in the deepest halls.
+function scaleDmg(base, d) { return base + Math.floor((d || 0) / 3); }

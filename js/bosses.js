@@ -6,15 +6,16 @@ class GiantBat {        // the arch-demon Vespertilio
     this.def = def;
     this.x = def.homeX; this.y = def.homeY;
     this.w = 48; this.h = 56;
-    this.hp = 64 + 30 * (def.danger || 0);
+    this.tide = def.variant === 'cistern';   // NEREZZA: a drowned, swarming aspect
+    this.hp = Math.round((this.tide ? 120 : 90) + 42 * (def.danger || 0));
     this.maxHp = this.hp;
-    this.bossName = 'VESPERTILIO';
+    this.bossName = def.bossName || 'VESPERTILIO';
     this.state = 'idle';
     this.t = 0;
     this.flash = 0;
     this.dead = false;
     this.deathT = 0;
-    this.contactDmg = 4;
+    this.contactDmg = 4 + Math.floor((def.danger || 0) / 2);
     this.diveCount = 0;
     this.vx = 0; this.vy = 0;
     this.fireCd = 0;
@@ -74,9 +75,13 @@ class GiantBat {        // the arch-demon Vespertilio
     } else if (this.state === 'summon') {
       if (this.t === 10) {
         AudioSys.sfxRoar();
-        burstRing(this.x + this.w / 2, this.y + this.h / 2, '#c07af0');
+        burstRing(this.x + this.w / 2, this.y + this.h / 2, this.tide ? '#50b0e8' : '#c07af0');
         const a0 = this.def.arenaX0, a1 = this.def.arenaX1;
-        for (const bx of [a0 + 12, a1 - 24]) {
+        // NEREZZA calls a whole drowned swarm; the vesper, only a pair of shades
+        const spots = this.tide
+          ? [a0 + 12, a0 + (a1 - a0) * 0.38, a0 + (a1 - a0) * 0.62, a1 - 24]
+          : [a0 + 12, a1 - 24];
+        for (const bx of spots) {
           const b = new Bat(bx, this.y + 10);
           b.minion = true; b.state = 'fly'; b.hp = 2;
           b.vx = bx < player.x ? 1.2 : -1.2;
@@ -86,13 +91,17 @@ class GiantBat {        // the arch-demon Vespertilio
       }
       if (this.t > 50) { this.state = 'hover'; this.t = 60; }
     } else if (this.state === 'breath') {
-      // rear back and spit three arcing gouts of hellfire at the hunter
+      // rear back and spit arcing gouts at the hunter — NEREZZA spews a wide
+      // three-fanged tidal volley, the vesper a single aimed gout.
       if (this.t === 10) AudioSys.sfxRoar();
       if (this.t === 22 || this.t === 34 || this.t === 46) {
         const sx = this.x + this.w / 2 - 7, sy = this.y + this.h - 14;
         const dx = player.x + player.w / 2 - (sx + 7);
         const T = 50 + (this.t - 22);
-        game.enemyProjectiles.push(new EnemyFireball(sx, sy, dx / T, -1.3 + (this.t - 22) * 0.015));
+        const fan = this.tide ? [-0.9, 0, 0.9] : [0];
+        for (const off of fan) {
+          game.enemyProjectiles.push(new EnemyFireball(sx, sy, dx / T + off, -1.3 + (this.t - 22) * 0.015));
+        }
       }
       if (this.t > 62) { this.state = 'hover'; this.t = 60; }
     } else if (this.state === 'telegraph') {
@@ -134,6 +143,12 @@ class GiantBat {        // the arch-demon Vespertilio
     else f = (this.t >> 3) % 6;
     const white = this.flash > 0 || (this.dead && (this.deathT & 2));
     const flip = game.player && game.player.x + game.player.w / 2 > this.x + this.w / 2;
+    // NEREZZA drips with a drowned blue nimbus; the vesper wears none
+    if (this.tide && !this.dead) {
+      const hx = this.x + this.w / 2 - camX, hy = this.y + this.h / 2 - camY;
+      g.fillStyle = 'rgba(60,150,220,0.10)';
+      g.beginPath(); g.arc(hx, hy, 38 + Math.sin(this.t * 0.08) * 3, 0, 7); g.fill();
+    }
     drawSheetFrame(g, sheet, f, this.x + this.w / 2 - camX, this.y + this.h - camY, flip, white);
   }
 }
@@ -145,13 +160,15 @@ class NightmareBoss {
     this.w = 74; this.h = 44;
     this.x = def.homeX - this.w / 2;
     this.y = (def.floorY !== undefined ? def.floorY : 12 * TILE) - this.h;
-    this.hp = 72 + 30 * (def.danger || 0);
+    this.pale = def.variant === 'gallery';   // THE PALE TWIN: a mirror-stepping aspect
+    this.dmgBonus = Math.floor((def.danger || 0) / 2);
+    this.hp = Math.round((this.pale ? 130 : 100) + 42 * (def.danger || 0));
     this.maxHp = this.hp;
-    this.bossName = 'TENEBRAE';
+    this.bossName = def.bossName || 'TENEBRAE';
     this.state = 'idle';
     this.t = 0; this.flash = 0;
     this.dead = false; this.deathT = 0;
-    this.contactDmg = 4;
+    this.contactDmg = 4 + this.dmgBonus;
     this.dir = -1;
     this.gallops = 0;
     this.fireCd = 0; this.frozen = 0;   // immune; fields exist for uniform checks
@@ -196,15 +213,24 @@ class NightmareBoss {
     if (this.state === 'pace') {
       this.dir = player.x + player.w / 2 > this.x + this.w / 2 ? 1 : -1;
       this.x += this.dir * 0.5;
-      this.contactDmg = 3;
+      this.contactDmg = 3 + this.dmgBonus;
       if (this.t > (this.enraged ? 70 : 110)) { this.state = 'telegraph'; this.t = 0; }
     } else if (this.state === 'telegraph') {
       this.x += (this.t & 2) ? 1 : -1;
       if (this.t === 1) AudioSys.sfxHit();
+      // THE PALE TWIN mirror-steps mid-wind: it vanishes and re-forms across the
+      // hall, so the charge comes from the side you did not brace for.
+      if (this.pale && this.t === 14) {
+        const b0 = this.def.arenaX0 + 8, b1 = this.def.arenaX1 - 8 - this.w;
+        burst(this.x + this.w / 2, this.y + this.h / 2, ['#e8e0ff', '#a0b0d0'], 12, 1.4, 0);
+        this.x = player.x + player.w / 2 > (b0 + b1) / 2 ? b0 : b1;
+        burstRing(this.x + this.w / 2, this.y + this.h / 2, '#e8e0ff');
+        AudioSys.sfxSoul();
+      }
       if (this.t > 26) {
         this.state = 'gallop'; this.t = 0;
         this.dir = player.x + player.w / 2 > this.x + this.w / 2 ? 1 : -1;
-        this.contactDmg = 5;
+        this.contactDmg = 5 + this.dmgBonus;
         AudioSys.sfxDash();
       }
     } else if (this.state === 'gallop') {
@@ -217,7 +243,7 @@ class NightmareBoss {
         else { this.state = 'telegraph'; this.t = 0; }
       }
     } else if (this.state === 'flames') {
-      this.contactDmg = 3;
+      this.contactDmg = 3 + this.dmgBonus;
       if (this.t === 10) AudioSys.sfxRoar();
       if (this.t === 20 || this.t === 30 || this.t === 40 || this.t === 50) {
         const sx = this.x + this.w / 2;
@@ -233,11 +259,18 @@ class NightmareBoss {
     const galloping = this.state === 'gallop';
     const sheet = galloping ? Sheets.nightmareGallop : Sheets.nightmareIdle;
     const f = (this.t >> (galloping ? 2 : 3)) % 4;
-    const white = this.flash > 0 || (this.dead && (this.deathT & 2));
+    const white = this.flash > 0 || (this.dead && (this.deathT & 2)) || (this.pale && !this.dead);
+    // THE PALE TWIN is a thing of mirror-light: a lagging afterimage trails it,
+    // and it renders bone-white where TENEBRAE is dark.
+    if (this.pale && !this.dead) {
+      g.globalAlpha = 0.28;
+      drawSheetFrame(g, sheet, f, this.x + this.w / 2 - this.dir * 8 - camX, this.y + this.h - camY, this.dir > 0, true);
+      g.globalAlpha = 1;
+    }
     // native art faces left; flip when heading right
     drawSheetFrame(g, sheet, f, this.x + this.w / 2 - camX, this.y + this.h - camY, this.dir > 0, white);
     if (this.state === 'flames' && (this.t & 3) < 2) {
-      g.fillStyle = 'rgba(90,208,208,0.14)';
+      g.fillStyle = this.pale ? 'rgba(200,200,232,0.14)' : 'rgba(90,208,208,0.14)';
       g.beginPath();
       g.arc(Math.floor(this.x + this.w / 2 - camX), Math.floor(this.y + 10 - camY), 26, 0, 7);
       g.fill();
@@ -252,13 +285,15 @@ class HellBeastBoss {
     this.w = 44; this.h = 44;
     this.x = def.homeX - this.w / 2;
     this.y = (def.floorY !== undefined ? def.floorY : 12 * TILE) - this.h;
-    this.hp = 80 + 30 * (def.danger || 0);
+    this.ember = def.variant === 'foundry';   // FORGEMAW: it treads in fire it leaves behind
+    this.dmgBonus = Math.floor((def.danger || 0) / 2);
+    this.hp = Math.round((this.ember ? 130 : 110) + 44 * (def.danger || 0));
     this.maxHp = this.hp;
-    this.bossName = 'MOLOCH';
+    this.bossName = def.bossName || 'MOLOCH';
     this.state = 'idle';
     this.t = 0; this.flash = 0;
     this.dead = false; this.deathT = 0;
-    this.contactDmg = 4;
+    this.contactDmg = 4 + this.dmgBonus;
     this.dir = -1;
     this.attacks = 0;
     this.fireCd = 0; this.frozen = 0;   // immune; uniform fields
@@ -336,7 +371,7 @@ class HellBeastBoss {
           ['#ff9020', '#ffd858', '#e04040'][(Math.random() * 3) | 0], 12, -0.01);
       }
       if (!player.dead && overlap(jet, player.hitbox())) {
-        player.damage(3, this.x + this.w / 2);
+        player.damage(3 + this.dmgBonus, this.x + this.w / 2);
       }
       if (this.t > (this.enraged ? 100 : 70)) { this.state = 'stalk'; this.t = 0; }
     } else if (this.state === 'leap') {
@@ -351,6 +386,13 @@ class HellBeastBoss {
         dustPuff(this.x + this.w - 6, this.y + this.h, 5);
         game.addShake(3);
         AudioSys.sfxHit();
+        // FORGEMAW's tread splashes molten iron: the ground it lands on burns.
+        if (this.ember) {
+          const fy = (this.def.floorY || 12 * TILE);
+          game.projectiles.push(new FirePool(this.x + this.w / 2 - 14, fy));
+          game.projectiles.push(new FirePool(this.x + this.w / 2 + 6, fy));
+          burstRing(this.x + this.w / 2, fy, '#ff9020');
+        }
       }
     }
   }
@@ -371,11 +413,15 @@ class HellBeastBoss {
       g.arc(Math.floor(this.x + this.w / 2 + this.dir * 16 - camX), Math.floor(this.y + 12 - camY), 10, 0, 7);
       g.fill();
     }
-    // enraged: burning aura
-    if (this.enraged && !this.dead) {
+    // enraged, or FORGEMAW at any time: a burning aura and drifting embers
+    if ((this.enraged || this.ember) && !this.dead) {
       const hx = this.x + this.w / 2 - camX, hy = this.y + this.h / 2 - camY;
-      g.fillStyle = 'rgba(255,80,20,0.08)';
+      g.fillStyle = this.ember ? 'rgba(255,110,30,0.10)' : 'rgba(255,80,20,0.08)';
       g.beginPath(); g.arc(hx, hy, 40, 0, 7); g.fill();
+      if (this.ember && (this.t & 3) === 0) {
+        spawnParticle(this.x + Math.random() * this.w, this.y + this.h - 4,
+          (Math.random() - 0.5) * 0.4, -0.5 - Math.random() * 0.5, '#ffb050', 20, -0.02);
+      }
     }
   }
 }
@@ -389,9 +435,9 @@ class FinalBoss {
     this.def = def;
     this.x = def.homeX; this.y = def.homeY;
     this.w = 48; this.h = 56;
-    this.hp = 200 + 30 * (def.danger || 0);
+    this.hp = Math.round(340 + 44 * (def.danger || 0));
     this.maxHp = this.hp;
-    this.bossName = 'THE MOONFANG';
+    this.bossName = def.bossName || 'THE MOONFANG';
     this.state = 'idle';
     this.t = 0; this.flash = 0;
     this.dead = false; this.deathT = 0;
@@ -552,9 +598,9 @@ class DragonGuardian {
     this.w = 80; this.h = 56;
     this.x = def.homeX - this.w / 2;
     this.y = def.homeY;
-    this.hp = 160 + 40 * (def.danger || 0);
+    this.hp = Math.round(210 + 52 * (def.danger || 0));
     this.maxHp = this.hp;
-    this.bossName = 'VAELTHRAN';
+    this.bossName = def.bossName || 'VAELTHRAN';
     this.state = 'idle';
     this.t = 0; this.flash = 0;
     this.dead = false; this.deathT = 0;
